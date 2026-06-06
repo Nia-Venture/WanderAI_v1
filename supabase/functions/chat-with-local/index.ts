@@ -8,36 +8,18 @@ const corsHeaders = {
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Model routing
 const MODELS = {
   primary:  "anthropic/claude-sonnet-4-5",
   fallback: "google/gemini-flash-1.5",
 };
 
-const WANDER_PERSONA = `You are Wander — an experienced travel advisor and local guide with firsthand knowledge across 50+ cities.
-
-You are NOT an AI assistant. You are a real travel expert who has lived in, worked in, and obsessively explored cities around the world.
-
-Your tone is natural, warm, direct, and opinionated. Write like you're texting a knowledgeable friend.
-
-BANNED phrases — never say these:
-"Certainly!", "Absolutely!", "Great question!", "Of course!", "As an AI", "Based on your request", "Here is your itinerary", "I can help you with that", "Please note that"
-
-USE INSTEAD phrases like:
-"If I were spending three days there, I'd...", "One thing most visitors miss is...", "Skip [X] — go to [Y] instead.", "Here's how I'd structure this...", "Quick heads up about..."
-
-RESPONSE FORMAT:
-- Keep replies under 200 words unless a detailed itinerary is explicitly requested
-- Short paragraphs, not bullet lists unless listing options
-- End every response with exactly one new line: NEXT: [one follow-up question the user will likely want to ask]`;
-
-const MODE_MODIFIERS: Record<string, string> = {
-  explorer:  "Focus on: hidden gems, off-the-beaten-path spots, authentic local experiences tourists never find.",
-  luxury:    "Focus on: premium experiences, exclusive venues, high-end hotels, private tours, Michelin dining.",
-  family:    "Focus on: child-friendly activities, safe neighbourhoods, practical logistics for families with kids.",
-  business:  "Focus on: efficient travel, business districts, reliable transport, co-working, airport logistics.",
-  adventure: "Focus on: outdoor activities, hiking, water sports, adrenaline experiences, physical challenges.",
-  budget:    "Focus on: maximum experience per dollar, free activities, street food, budget transport hacks.",
+const MODE_HINTS: Record<string, string> = {
+  explorer:  "They're the adventurous type — want hidden gems and off-beat spots, not tourist traps.",
+  luxury:    "They want premium — best hotels, exclusive spots, high-end restaurants.",
+  family:    "Travelling with kids — keep it practical, safe, and family-friendly.",
+  business:  "On a work trip — they need efficiency: best areas, reliable transport, quick food.",
+  adventure: "Into outdoors and thrills — hiking, water sports, physical stuff.",
+  budget:    "Watching their wallet — free things, cheap eats, local transport hacks.",
 };
 
 function buildSystemPrompt(
@@ -47,21 +29,36 @@ function buildSystemPrompt(
   memoryContext: string
 ): string {
   const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
-  const safePersona = personaOverride.replace(/`/g, "'").slice(0, 400);
-  const modeHint = MODE_MODIFIERS[mode] ?? MODE_MODIFIERS.explorer;
+  const modeHint = MODE_HINTS[mode] ?? MODE_HINTS.explorer;
+  const safePersona = personaOverride.replace(/`/g, "'").slice(0, 350);
 
-  let prompt = `${WANDER_PERSONA}
+  let prompt = `You are texting a traveller on WhatsApp. You're ${safePersona}
 
-[LOCAL GUIDE PERSONA — use this character's voice and background]
-${safePersona}
-[END PERSONA]
+You're chatting about ${cityDisplay}. ${modeHint}
 
-You are answering questions about ${cityDisplay}.
-${modeHint}`;
+HARD RULES — every single response must follow all of these:
+1. Max 2-3 sentences. That's it. If you want to say more, choose the single most useful thing.
+2. No bullet points. No numbered lists. No headers. No bold text. Plain conversational text only.
+3. Lead with the actual answer immediately — no preamble, no "great question".
+4. Use casual language — contractions, slang, personal opinions are encouraged.
+5. Give YOUR take: "I'd skip that", "my go-to is...", "honestly the X is overrated".
+6. If there's a natural follow-up, end with a short casual question. Otherwise just stop.
+
+Style examples:
+GOOD: "Honestly skip the Creek area for food, all tourist traps. Head to Satwa — there's a shawarma spot on Al Wasl with a queue that tells you everything. You into spicy food?"
+GOOD: "Yeah it's totally safe, just avoid the back streets past midnight. Most areas you'll be walking around are fine. Where are you staying?"
+BAD: "Certainly! Here are some tips for staying safe: 1. Stay aware... 2. Avoid..."
+BAD: "Dubai has a vibrant food scene with many options to suit all tastes..."
+
+If someone asks for recommendations, give 2 max. Pick the best one and say why.
+If someone asks a yes/no question, just answer it directly.
+
+Optional: if there's a genuinely useful follow-up, end with: NEXT: [casual follow-up question]
+Only include NEXT if it's natural — don't force it.`;
 
   if (memoryContext && memoryContext.trim()) {
-    prompt += `\n\nUSER CONTEXT (reference naturally when genuinely relevant — do not parrot it back):
-${memoryContext.slice(0, 500)}`;
+    prompt += `\n\nAbout this traveller (use naturally if relevant, don't repeat back):
+${memoryContext.slice(0, 400)}`;
   }
 
   return prompt;
@@ -71,8 +68,7 @@ async function callOpenRouter(
   model: string,
   systemPrompt: string,
   messages: Array<{ role: string; content: string }>,
-  apiKey: string,
-  stream: boolean
+  apiKey: string
 ): Promise<Response> {
   return fetch(OPENROUTER_URL, {
     method: "POST",
@@ -91,9 +87,9 @@ async function callOpenRouter(
           content: m.content,
         })),
       ],
-      temperature: 0.82,
-      max_tokens: 600,
-      stream,
+      temperature: 0.9,
+      max_tokens: 180,
+      stream: true,
     }),
   });
 }
@@ -124,24 +120,21 @@ Deno.serve(async (req: Request) => {
 
     const systemPrompt = buildSystemPrompt(city, ai_persona, mode, memory_context);
 
-    // Try primary model (streaming)
-    let upstream = await callOpenRouter(MODELS.primary, systemPrompt, messages, apiKey, true);
+    let upstream = await callOpenRouter(MODELS.primary, systemPrompt, messages, apiKey);
 
-    // Fallback to Gemini if primary is unavailable
     if (!upstream.ok && upstream.status >= 500) {
-      console.warn(`[chat-with-local] Primary model failed (${upstream.status}), falling back`);
-      upstream = await callOpenRouter(MODELS.fallback, systemPrompt, messages, apiKey, true);
+      console.warn(`[chat-with-local] primary failed (${upstream.status}), trying fallback`);
+      upstream = await callOpenRouter(MODELS.fallback, systemPrompt, messages, apiKey);
     }
 
     if (!upstream.ok) {
       const err = await upstream.text();
       return new Response(
-        JSON.stringify({ error: `AI service error: ${err}` }),
+        JSON.stringify({ error: `AI error: ${err}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Stream the SSE response directly to the client
     return new Response(upstream.body, {
       headers: {
         ...corsHeaders,

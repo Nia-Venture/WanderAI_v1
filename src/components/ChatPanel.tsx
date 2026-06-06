@@ -8,10 +8,7 @@ import {
   TRAVEL_MODE_LABELS,
   TRAVEL_MODE_EMOJIS,
 } from '../services/ai/openrouter.service';
-import {
-  TYPING_STATUSES,
-  MODE_STARTER_QUESTIONS,
-} from '../services/ai/prompt.service';
+import { MODE_STARTER_QUESTIONS } from '../services/ai/prompt.service';
 import {
   extractPreferenceSignals,
   parseReply,
@@ -40,21 +37,19 @@ function Avatar({ local }: { local: LocalProfile }) {
   );
 }
 
-function TypingDots({ status }: { status: string }) {
+// Simple iMessage-style dots — no status text, just human-feeling
+function TypingBubble() {
   return (
-    <div className="chat-bubble-local px-3.5 py-2.5 space-y-1.5">
+    <div className="chat-bubble-local px-4 py-3">
       <span className="flex gap-1 items-center h-4">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce"
-            style={{ animationDelay: `${i * 0.15}s` }}
+            className="w-2 h-2 rounded-full bg-muted/70 animate-bounce"
+            style={{ animationDelay: `${i * 0.18}s` }}
           />
         ))}
       </span>
-      {status && (
-        <p className="font-mono text-xs text-muted animate-fade-in">{status}</p>
-      )}
     </div>
   );
 }
@@ -70,14 +65,13 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
     {
       id: 'welcome',
       role: 'local',
-      content: `Hey! I'm ${local.name} — ${local.years_local} years in ${cityDisplay}. What do you want to know?`,
+      content: `Hey! I'm ${local.name} — ${local.years_local} years in ${cityDisplay}. Ask me anything.`,
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showTyping, setShowTyping] = useState(false);
-  const [typingStatus, setTypingStatus] = useState('');
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +79,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -98,24 +92,12 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, showTyping]);
 
-  function startTypingCycle() {
-    let idx = Math.floor(Math.random() * TYPING_STATUSES.length);
-    setTypingStatus(TYPING_STATUSES[idx]);
-    setShowTyping(true);
-    typingTimerRef.current = setInterval(() => {
-      idx = (idx + 1) % TYPING_STATUSES.length;
-      setTypingStatus(TYPING_STATUSES[idx]);
-    }, 1800);
-  }
-
-  function stopTypingCycle() {
-    if (typingTimerRef.current) {
-      clearInterval(typingTimerRef.current);
-      typingTimerRef.current = null;
-    }
-    setShowTyping(false);
-    setTypingStatus('');
-  }
+  // Cleanup typing interval on unmount
+  useEffect(() => {
+    return () => {
+      if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+    };
+  }, []);
 
   const send = useCallback(
     async (text?: string) => {
@@ -133,7 +115,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setSending(true);
-      startTypingCycle();
+      setShowTyping(true);
 
       if (user) {
         const signals = extractPreferenceSignals(content);
@@ -144,23 +126,51 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
 
       const replyId = crypto.randomUUID();
 
-      // Local flag — avoids stale closure on React state (streamingId would
-      // always read null inside the async callback if used directly).
-      let hasStartedStreaming = false;
+      // Mutable state shared between stream callbacks and the typing interval
+      // (plain objects so no stale-closure issues with React state)
+      let hasStartedBubble = false;
+      const pending = { text: '', done: false, suggestion: undefined as string | undefined };
 
-      // Token buffer + rAF handle for batching — prevents a re-render per token
-      let tokenBuffer = '';
-      let rafHandle: number | null = null;
+      // Clear any leftover interval from a previous send
+      if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
 
-      function flushBuffer() {
-        rafHandle = null;
-        if (!tokenBuffer) return;
-        const chunk = tokenBuffer;
-        tokenBuffer = '';
+      // Word-by-word drain: release one word at ~75 ms so it looks like typing
+      typeIntervalRef.current = setInterval(() => {
+        if (!pending.text) {
+          if (pending.done) {
+            clearInterval(typeIntervalRef.current!);
+            typeIntervalRef.current = null;
+
+            // Finalise: strip NEXT: marker, show suggestion chip
+            setStreamingMsgId(null);
+            setSending(false);
+            if (pending.suggestion) setSuggestion(pending.suggestion);
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== replyId) return m;
+                const { reply } = parseReply(m.content);
+                return { ...m, content: reply };
+              })
+            );
+            inputRef.current?.focus();
+          }
+          return;
+        }
+
+        // Grab the next word (up to and including the next space, max 12 chars)
+        const spaceIdx = pending.text.indexOf(' ');
+        let chunk: string;
+        if (spaceIdx === -1 || spaceIdx > 12) {
+          chunk = pending.text.slice(0, Math.min(12, pending.text.length));
+        } else {
+          chunk = pending.text.slice(0, spaceIdx + 1);
+        }
+        pending.text = pending.text.slice(chunk.length);
+
         setMessages((prev) =>
           prev.map((m) => (m.id === replyId ? { ...m, content: m.content + chunk } : m))
         );
-      }
+      }, 75);
 
       await chatWithLocalStream(
         city,
@@ -170,56 +180,30 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
         memoryContext,
         {
           onToken: (token) => {
-            if (!hasStartedStreaming) {
-              // First token: hide typing indicator, create the message bubble
-              hasStartedStreaming = true;
-              stopTypingCycle();
+            if (!hasStartedBubble) {
+              hasStartedBubble = true;
+              setShowTyping(false);
               setStreamingMsgId(replyId);
+              // Create the empty bubble — interval will fill it word-by-word
               setMessages((prev) => [
                 ...prev,
-                { id: replyId, role: 'local', content: token, timestamp: new Date() },
+                { id: replyId, role: 'local', content: '', timestamp: new Date() },
               ]);
-              return;
             }
-
-            // Subsequent tokens: buffer and flush on next animation frame
-            tokenBuffer += token;
-            if (rafHandle === null) {
-              rafHandle = requestAnimationFrame(flushBuffer);
-            }
+            pending.text += token;
           },
 
           onDone: (sugg) => {
-            // Flush any buffered tokens before finalising
-            if (rafHandle !== null) {
-              cancelAnimationFrame(rafHandle);
-              rafHandle = null;
-            }
-            flushBuffer();
-
-            stopTypingCycle();
-            setStreamingMsgId(null);
-            setSending(false);
-            if (sugg) setSuggestion(sugg);
-
-            // Strip the NEXT: suggestion line from the displayed message
-            setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== replyId) return m;
-                const { reply } = parseReply(m.content);
-                return { ...m, content: reply };
-              })
-            );
-
-            inputRef.current?.focus();
+            setShowTyping(false);
+            pending.suggestion = sugg;
+            pending.done = true;
+            // Interval will flush remaining text then call finalise
           },
 
           onError: () => {
-            if (rafHandle !== null) {
-              cancelAnimationFrame(rafHandle);
-              rafHandle = null;
-            }
-            stopTypingCycle();
+            clearInterval(typeIntervalRef.current!);
+            typeIntervalRef.current = null;
+            setShowTyping(false);
             setStreamingMsgId(null);
             setSending(false);
             setError('Something went wrong — please try again.');
@@ -265,11 +249,11 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
         </button>
       </div>
 
-      {/* AI note */}
-      <div className="px-3 py-2 bg-primary/5 border-b border-border flex items-start gap-2 shrink-0">
-        <Bot size={13} className="text-primary mt-0.5 shrink-0" />
-        <p className="font-sans text-xs text-muted leading-relaxed">
-          {local.name}'s local knowledge, powered by AI — answers based on verified local expertise of {cityDisplay}.
+      {/* AI note — kept minimal, single line */}
+      <div className="px-3 py-1.5 bg-primary/5 border-b border-border flex items-center gap-1.5 shrink-0">
+        <Bot size={11} className="text-primary shrink-0" />
+        <p className="font-mono text-xs text-muted">
+          Local knowledge · AI-powered · {cityDisplay}
         </p>
       </div>
 
@@ -294,7 +278,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -309,7 +293,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
               >
                 {msg.content}
                 {msg.id === streamingMsgId && (
-                  <span className="inline-block w-0.5 h-[1em] bg-current opacity-60 ml-0.5 animate-pulse align-middle" />
+                  <span className="inline-block w-0.5 h-[1em] bg-current opacity-50 ml-0.5 animate-pulse align-middle" />
                 )}
               </div>
               <p className={`font-mono text-xs text-muted mt-1 ${msg.role === 'user' ? 'text-right' : ''}`}>
@@ -319,11 +303,11 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
           </div>
         ))}
 
-        {/* Typing indicator — shown until first token arrives */}
+        {/* iMessage-style typing indicator */}
         {showTyping && (
           <div className="flex gap-2.5 animate-fade-in">
             <Avatar local={local} />
-            <TypingDots status={typingStatus} />
+            <TypingBubble />
           </div>
         )}
 
@@ -333,15 +317,14 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggested follow-up */}
+      {/* Follow-up suggestion */}
       {suggestion && !sending && (
         <div className="px-4 pb-2 shrink-0 animate-fade-in">
-          <p className="font-mono text-xs text-muted mb-1.5">You might also want to ask:</p>
           <button
             onClick={() => send(suggestion)}
-            className="flex items-center gap-2 font-sans text-xs text-primary border border-primary/25 hover:border-accent hover:text-accent bg-surface px-3 py-2 rounded-xl transition-all w-full text-left"
+            className="flex items-center gap-2 font-sans text-xs text-primary border border-primary/20 hover:border-accent hover:text-accent bg-surface px-3 py-2 rounded-xl transition-all w-full text-left"
           >
-            <ChevronRight size={13} className="shrink-0 text-accent" />
+            <ChevronRight size={12} className="shrink-0 text-accent" />
             <span>{suggestion}</span>
           </button>
         </div>
@@ -355,7 +338,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
               key={q}
               onClick={() => send(q)}
               disabled={sending}
-              className="font-sans text-xs text-primary border border-primary/25 hover:border-accent hover:text-accent bg-surface px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
+              className="font-sans text-xs text-primary border border-primary/20 hover:border-accent hover:text-accent bg-surface px-3 py-1.5 rounded-full transition-all disabled:opacity-50"
             >
               {q}
             </button>
@@ -372,7 +355,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder={`Ask about ${cityDisplay} in ${TRAVEL_MODE_LABELS[mode].toLowerCase()} mode...`}
+            placeholder={`Ask ${local.name} anything about ${cityDisplay}...`}
             disabled={sending}
             className="flex-1 px-4 py-3 bg-transparent text-text-main placeholder-muted font-sans text-sm outline-none"
           />
