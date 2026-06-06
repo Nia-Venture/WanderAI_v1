@@ -49,6 +49,8 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 }
 
 // For OAuth users (Google), create a profile if one doesn't exist yet.
+// Uses ignoreDuplicates to avoid a race with signUpTraveller/signUpLocal,
+// which insert the profile right after auth.signUp() returns.
 async function ensureProfile(user: User): Promise<Profile | null> {
   const existing = await fetchProfile(user.id);
   if (existing) return existing;
@@ -59,12 +61,11 @@ async function ensureProfile(user: User): Promise<Profile | null> {
     user.email?.split('@')[0] ??
     'User';
 
-  const { data } = await supabase
+  await supabase
     .from('profiles')
-    .insert({ id: user.id, name, account_type: 'traveller' })
-    .select('id, name, account_type, created_at')
-    .maybeSingle();
-  return data;
+    .upsert({ id: user.id, name, account_type: 'traveller' }, { onConflict: 'id', ignoreDuplicates: true });
+
+  return fetchProfile(user.id);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

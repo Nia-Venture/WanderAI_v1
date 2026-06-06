@@ -514,8 +514,8 @@ export default function Auth() {
   }, [pathname]);
 
   useEffect(() => {
-    if (user) navigate('/dashboard');
-  }, [user]);
+    if (user && mode !== 'reset') navigate('/dashboard');
+  }, [user, mode]);
 
   const TABS: { key: Mode; label: string }[] = [
     { key: 'signin', label: 'Sign In' },
