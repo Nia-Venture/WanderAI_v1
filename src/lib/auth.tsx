@@ -23,7 +23,6 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   authLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
   signUpTraveller: (name: string, email: string, password: string) => Promise<void>;
   signUpLocal: (data: LocalSignUpData) => Promise<void>;
   signOut: () => Promise<void>;
@@ -33,7 +32,6 @@ const AuthContext = createContext<AuthContextValue>({
   user: null,
   profile: null,
   authLoading: true,
-  signIn: async () => {},
   signUpTraveller: async () => {},
   signUpLocal: async () => {},
   signOut: async () => {},
@@ -104,11 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }
-
   async function signUpTraveller(name: string, email: string, password: string) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
@@ -152,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, authLoading, signIn, signUpTraveller, signUpLocal, signOut }}
+      value={{ user, profile, authLoading, signUpTraveller, signUpLocal, signOut }}
     >
       {children}
     </AuthContext.Provider>

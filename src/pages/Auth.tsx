@@ -8,7 +8,7 @@ import { sendPin } from '../api/sendPin';
 import { verifyPin } from '../api/verifyPin';
 import { supabase } from '../lib/supabase';
 
-type Mode = 'signin' | 'traveller' | 'local' | 'forgot' | 'reset';
+type Mode = 'traveller' | 'local' | 'forgot' | 'reset';
 
 const HERO_IMAGE =
   'https://images.pexels.com/photos/11811982/pexels-photo-11811982.jpeg?auto=compress&cs=tinysrgb&w=1200';
@@ -92,72 +92,6 @@ function FieldInput({
   );
 }
 
-// ─── Sign In Form ──────────────────────────────────────────────────────────
-function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
-  const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email || !password) { setError('Please fill in all fields.'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      await signIn(email, password);
-      navigate('/dashboard');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Sign in failed.';
-      setError(msg.includes('Invalid') ? 'Incorrect email or password.' : msg);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
-        <PasswordInput value={password} onChange={setPassword} />
-
-        {error && (
-          <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
-        >
-          {loading ? (
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}
-            </span>
-          ) : (
-            <><ArrowRight size={16} /> Sign In with Email</>
-          )}
-        </button>
-
-        <div className="flex items-center justify-between">
-          <p className="font-sans text-sm text-muted">
-            New to WanderAI?{' '}
-            <button type="button" onClick={() => onSwitch('traveller')} className="text-accent hover:underline font-medium">
-              Create a free account
-            </button>
-          </p>
-          <button type="button" onClick={() => onSwitch('forgot')} className="font-sans text-sm text-muted hover:text-accent transition-colors">
-            Forgot password?
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
 // ─── Forgot Password Form ─────────────────────────────────────────────────
 function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   const [email, setEmail] = useState('');
@@ -190,7 +124,7 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
           </p>
         </div>
         <p className="font-sans text-sm text-center text-muted">
-          <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">← Back to sign in</button>
+          <button type="button" onClick={() => onSwitch('traveller')} className="text-accent hover:underline font-medium">← Back</button>
         </p>
       </div>
     );
@@ -212,7 +146,7 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
         )}
       </button>
       <p className="font-sans text-sm text-center text-muted">
-        <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">← Back to sign in</button>
+        <button type="button" onClick={() => onSwitch('traveller')} className="text-accent hover:underline font-medium">← Back</button>
       </p>
     </form>
   );
@@ -234,7 +168,7 @@ function ResetPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     try {
       await verifyPin('', '', newPassword);
       await supabase.auth.signOut();
-      onSwitch('signin');
+      onSwitch('traveller');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to reset password.');
     } finally {
@@ -327,10 +261,6 @@ function TravellerForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
         </button>
 
         <p className="font-sans text-xs text-muted text-center">By joining, you agree to our Terms of Service.</p>
-        <p className="font-sans text-sm text-center text-muted">
-          Already have an account?{' '}
-          <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">Sign in</button>
-        </p>
       </form>
     </div>
   );
@@ -473,10 +403,7 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
         )}
       </button>
 
-      <p className="font-sans text-sm text-center text-muted">
-        Already have an account?{' '}
-        <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">Sign in</button>
-      </p>
+      <p className="font-sans text-xs text-muted text-center">By applying, you agree to our Terms of Service.</p>
     </form>
   );
 }
@@ -489,10 +416,9 @@ export default function Auth() {
   const currentMode: Mode = (() => {
     const p = new URLSearchParams(window.location.search).get('mode');
     if (p === 'local') return 'local';
-    if (p === 'signup') return 'traveller';
     if (p === 'forgot') return 'forgot';
     if (p === 'reset') return 'reset';
-    return 'signin';
+    return 'traveller';
   })();
 
   const [mode, setMode] = useState<Mode>(currentMode);
@@ -518,13 +444,11 @@ export default function Auth() {
   }, [user, mode]);
 
   const TABS: { key: Mode; label: string }[] = [
-    { key: 'signin', label: 'Sign In' },
     { key: 'traveller', label: 'Join as Traveller' },
     { key: 'local', label: 'Join as Local' },
   ];
 
   const formTitle: Record<Mode, string> = {
-    signin: 'Welcome back',
     traveller: 'Start exploring like a local',
     local: 'Share your city with the world',
     forgot: 'Reset your password',
@@ -532,7 +456,6 @@ export default function Auth() {
   };
 
   const formSub: Record<Mode, string> = {
-    signin: 'Sign in to your WanderAI account.',
     traveller: 'Create your free traveller account.',
     local: 'Apply to become a verified WanderAI local guide.',
     forgot: "Enter your email and we'll send a reset link.",
@@ -636,7 +559,6 @@ export default function Auth() {
 
             {/* Form */}
             <div className="animate-fade-in">
-              {mode === 'signin' && <SignInForm onSwitch={setMode} />}
               {mode === 'traveller' && <TravellerForm onSwitch={setMode} />}
               {mode === 'local' && <LocalForm onSwitch={setMode} />}
               {mode === 'forgot' && <ForgotPasswordForm onSwitch={setMode} />}

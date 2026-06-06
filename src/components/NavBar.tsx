@@ -3,7 +3,7 @@ import Logo from './Logo';
 import UserMenu from './UserMenu';
 import { useAuth } from '../lib/auth';
 import { navigate } from '../lib/router';
-import { ChevronDown, LogIn, UserPlus, MapPin } from 'lucide-react';
+import { ChevronDown, UserPlus, MapPin } from 'lucide-react';
 
 interface NavBarProps {
   transparent?: boolean;
@@ -34,15 +34,9 @@ function AuthDropdown({ transparent }: { transparent: boolean }) {
 
   const options = [
     {
-      icon: <LogIn size={15} />,
-      label: 'Sign In',
-      sub: 'Continue to your account',
-      action: () => { navigate('/auth'); setOpen(false); },
-    },
-    {
       icon: <UserPlus size={15} />,
-      label: 'Sign Up',
-      sub: 'Join as a traveller',
+      label: 'Join as Traveller',
+      sub: 'Create your free account',
       action: () => { navigate('/auth?mode=signup'); setOpen(false); },
     },
     {
@@ -59,7 +53,7 @@ function AuthDropdown({ transparent }: { transparent: boolean }) {
         onClick={() => setOpen(v => !v)}
         className={`flex items-center gap-1.5 font-sans text-sm font-semibold transition-all px-4 py-2 rounded-lg border ${buttonCls}`}
       >
-        Sign In / Join
+        Join
         <ChevronDown size={14} className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
