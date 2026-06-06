@@ -62,11 +62,11 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-16 overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-no-repeat"
-          style={{ backgroundImage: `url(${HERO_IMAGE})`, backgroundPosition: 'center 40%' }}
+          className="absolute inset-0 bg-cover bg-no-repeat scale-105"
+          style={{ backgroundImage: `url(${HERO_IMAGE})`, backgroundPosition: 'center 40%', filter: 'blur(4px)' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/70" />
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/40 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/50 via-transparent to-transparent" />
 
         <div className="relative w-full max-w-3xl mx-auto text-center">
           <div className="flex justify-center mb-6">
@@ -77,21 +77,21 @@ export default function Landing() {
           </div>
 
           <div className="flex items-baseline justify-center gap-1 mb-2">
-            <span className="font-display font-bold text-white tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)' }}>Wander</span>
-            <span className="font-display font-bold text-accent tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)' }}>AI</span>
+            <span className="font-display font-bold text-white tracking-tight drop-shadow-lg" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)' }}>Wander</span>
+            <span className="font-display font-bold text-accent tracking-tight drop-shadow-lg" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.5rem)' }}>AI</span>
           </div>
 
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 mb-7">
+          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md border border-white/25 rounded-full px-4 py-1.5 mb-7">
             <span className="w-2 h-2 rounded-full bg-accent-2 animate-pulse" />
-            <span className="font-mono text-xs text-white/80">Live locals in 38+ cities</span>
+            <span className="font-mono text-xs text-white/90">Live locals in 38+ cities</span>
           </div>
 
-          <h1 className="font-display font-bold text-white leading-[1.1] mb-5 drop-shadow-lg" style={{ fontSize: 'clamp(2.6rem, 7vw, 5rem)' }}>
+          <h1 className="font-display font-bold text-white leading-[1.1] mb-5" style={{ fontSize: 'clamp(2.6rem, 7vw, 5rem)', textShadow: '0 2px 20px rgba(0,0,0,0.6)' }}>
             Travel Like a{' '}
             <span className="italic text-accent">Native.</span>
           </h1>
 
-          <p className="font-sans text-lg text-white/80 max-w-xl mx-auto leading-relaxed mb-10 drop-shadow">
+          <p className="font-sans text-lg text-white/90 max-w-xl mx-auto leading-relaxed mb-10 font-medium" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.7)' }}>
             Get a local's instinct for any city — in 60 seconds. Stop travelling like a tourist.
           </p>
 
@@ -102,7 +102,7 @@ export default function Landing() {
               <button
                 key={city}
                 onClick={() => navigate(`/city/${city.toLowerCase()}`)}
-                className="font-sans text-sm text-white/70 hover:text-white border border-white/20 hover:border-white/50 bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full transition-all"
+                className="font-sans text-sm text-white/85 hover:text-white border border-white/25 hover:border-white/60 bg-white/15 backdrop-blur-md px-4 py-1.5 rounded-full transition-all font-medium"
               >
                 {city}
               </button>
