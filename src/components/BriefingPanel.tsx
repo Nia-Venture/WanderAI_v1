@@ -11,6 +11,7 @@ import {
 interface BriefingPanelProps {
   briefing: CityBriefing;
   cityName: string;
+  generatedAt?: Date;
 }
 
 function Card({
@@ -46,7 +47,7 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function BriefingPanel({ briefing, cityName }: BriefingPanelProps) {
+export default function BriefingPanel({ briefing, cityName, generatedAt }: BriefingPanelProps) {
   return (
     <div className="space-y-5">
       {/* Payments */}
@@ -153,6 +154,12 @@ export default function BriefingPanel({ briefing, cityName }: BriefingPanelProps
           <p className="font-sans text-sm text-text-main leading-relaxed">{briefing.insider_tips.etiquette_tip}</p>
         </div>
       </Card>
+
+      {generatedAt && (
+        <p className="font-mono text-xs text-muted text-right pt-1">
+          Updated {generatedAt.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+        </p>
+      )}
     </div>
   );
 }

@@ -13,7 +13,9 @@ function matchRoute(pattern: string, pathname: string): RouteParams | null {
   const params: RouteParams = {};
   for (let i = 0; i < patternParts.length; i++) {
     if (patternParts[i].startsWith(':')) {
-      params[patternParts[i].slice(1)] = decodeURIComponent(pathParts[i]);
+      params[patternParts[i].slice(1)] = (() => {
+        try { return decodeURIComponent(pathParts[i]); } catch { return pathParts[i]; }
+      })();
     } else if (patternParts[i] !== pathParts[i]) {
       return null;
     }

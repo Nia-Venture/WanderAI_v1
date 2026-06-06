@@ -1,8 +1,22 @@
 import type { CityBriefing } from '../types/briefing';
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-briefing`;
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+interface CacheEntry {
+  data: CityBriefing;
+  timestamp: number;
+}
+
+const cache = new Map<string, CacheEntry>();
 
 export async function generateBriefing(cityName: string): Promise<CityBriefing> {
+  const key = cityName.toLowerCase().trim();
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.data;
+  }
+
   const response = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
@@ -22,5 +36,7 @@ export async function generateBriefing(cityName: string): Promise<CityBriefing> 
     throw new Error('Incomplete briefing data returned');
   }
 
-  return data as CityBriefing;
+  const result = data as CityBriefing;
+  cache.set(key, { data: result, timestamp: Date.now() });
+  return result;
 }
