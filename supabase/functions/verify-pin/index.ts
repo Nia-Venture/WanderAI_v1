@@ -1,15 +1,40 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+async function getUserByEmail(supabaseUrl: string, serviceRoleKey: string, email: string) {
+  const res = await fetch(
+    `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&page=1&per_page=1`,
+    { headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey } }
+  );
+  if (!res.ok) return null;
+  const body = await res.json();
+  const users = body?.users ?? [];
+  return users.find((u: { id: string; email: string }) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
+}
+
+async function updateUserPassword(supabaseUrl: string, serviceRoleKey: string, userId: string, password: string) {
+  const res = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ password }),
+  });
+  return res.ok;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: corsHeaders });
 
   try {
     const { email, pin, newPassword } = await req.json();
@@ -24,10 +49,10 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // ── Verify PIN hash ─────────────────────────────────────────────────────
     const encoder = new TextEncoder();
@@ -53,21 +78,17 @@ serve(async (req) => {
       });
     }
 
-    // ── Lookup user directly (replaces broken listUsers pagination) ─────────
-    const { data: { user }, error: lookupError } =
-      await supabase.auth.admin.getUserByEmail(email.toLowerCase());
-
-    if (lookupError || !user) {
+    // ── Lookup user via REST API ─────────────────────────────────────────────
+    const user = await getUserByEmail(SUPABASE_URL, SERVICE_ROLE_KEY, email);
+    if (!user) {
       return new Response(JSON.stringify({ error: 'User not found.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // ── Update password ─────────────────────────────────────────────────────
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
-      user.id, { password: newPassword }
-    );
-    if (updateError) {
+    // ── Update password via REST API ────────────────────────────────────────
+    const updated = await updateUserPassword(SUPABASE_URL, SERVICE_ROLE_KEY, user.id, newPassword);
+    if (!updated) {
       return new Response(JSON.stringify({ error: 'Failed to update password.' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -82,7 +103,7 @@ serve(async (req) => {
 
   } catch (err) {
     console.error('[verify-pin] Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error.' }), {
+    return new Response(JSON.stringify({ error: String(err) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

@@ -1,15 +1,27 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+async function getUserByEmail(supabaseUrl: string, serviceRoleKey: string, email: string) {
+  const res = await fetch(
+    `${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}&page=1&per_page=1`,
+    { headers: { Authorization: `Bearer ${serviceRoleKey}`, apikey: serviceRoleKey } }
+  );
+  if (!res.ok) return null;
+  const body = await res.json();
+  const users = body?.users ?? [];
+  return users.find((u: { email: string }) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 200, headers: corsHeaders });
 
   try {
     const { email } = await req.json();
@@ -19,10 +31,10 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // ── Rate-limit: max 1 PIN per email per 60 seconds ──────────────────────
     const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
@@ -39,12 +51,11 @@ serve(async (req) => {
       );
     }
 
-    // ── User lookup via direct API (replaces broken listUsers pagination) ───
-    const { data: { user }, error: lookupError } =
-      await supabase.auth.admin.getUserByEmail(email.toLowerCase());
+    // ── User lookup via REST API ─────────────────────────────────────────────
+    const user = await getUserByEmail(SUPABASE_URL, SERVICE_ROLE_KEY, email);
 
     // Always return success to prevent email enumeration
-    if (lookupError || !user) {
+    if (!user) {
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -70,8 +81,7 @@ serve(async (req) => {
     // ── Send email via Resend ───────────────────────────────────────────────
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
     if (!RESEND_API_KEY) {
-      console.error('[send-pin] RESEND_API_KEY secret is not set in Supabase dashboard. ' +
-        'Go to: Supabase Dashboard → Edge Functions → Secrets → Add RESEND_API_KEY');
+      console.error('[send-pin] RESEND_API_KEY secret is not set.');
       return new Response(
         JSON.stringify({ error: 'Email service not configured. Contact support.' }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -121,7 +131,7 @@ serve(async (req) => {
 
   } catch (err) {
     console.error('[send-pin] Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Failed to send PIN.' }), {
+    return new Response(JSON.stringify({ error: String(err) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
