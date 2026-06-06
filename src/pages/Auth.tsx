@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, type LocalSignUpData } from '../lib/auth';
 import { LogoMark } from '../components/Logo';
 import { useRouter, navigate } from '../lib/router';
@@ -6,8 +6,9 @@ import { Eye, EyeOff, ArrowRight, CheckCircle2, Globe, Clock, Star } from 'lucid
 import { SUPPORTED_CITIES } from '../data/seededLocals';
 import { sendPin } from '../api/sendPin';
 import { verifyPin } from '../api/verifyPin';
+import { supabase } from '../lib/supabase';
 
-type Mode = 'signin' | 'traveller' | 'local' | 'forgot';
+type Mode = 'signin' | 'traveller' | 'local' | 'forgot' | 'reset';
 
 const HERO_IMAGE =
   'https://images.pexels.com/photos/11811982/pexels-photo-11811982.jpeg?auto=compress&cs=tinysrgb&w=1200';
@@ -157,152 +158,48 @@ function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   );
 }
 
-// ─── Forgot Password Form (PIN-based) ─────────────────────────────────────
+// ─── Forgot Password Form ─────────────────────────────────────────────────
 function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const [pin, setPin] = useState(['', '', '', '', '', '']);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
-  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const pinString = pin.join('');
-
-  async function handleSendPin(e: React.FormEvent) {
+  async function handleSendLink(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) { setError('Please enter your email.'); return; }
     setLoading(true);
     setError('');
     try {
       await sendPin(email.trim());
-      // Always advance to PIN step — edge function returns success even for
-      // unregistered emails (email enumeration protection). The green banner
-      // tells the user to check their inbox; if no email arrives it means
-      // the address isn't registered.
       setSent(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send PIN.';
-      if (msg.includes('not configured') || msg.includes('service')) {
-        setError('Password reset is temporarily unavailable. Please contact support.');
-      } else if (msg.includes('wait 60')) {
-        setError('Please wait 60 seconds before requesting another PIN.');
-      } else {
-        setError(msg);
-      }
+      setError(err instanceof Error ? err.message : 'Failed to send reset email.');
     } finally {
       setLoading(false);
     }
   }
 
-  function handlePinChange(i: number, val: string) {
-    const digit = val.replace(/\D/g, '').slice(-1);
-    const next = [...pin];
-    next[i] = digit;
-    setPin(next);
-    if (digit && i < 5) pinRefs.current[i + 1]?.focus();
-  }
-
-  function handlePinKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !pin[i] && i > 0) {
-      pinRefs.current[i - 1]?.focus();
-    }
-  }
-
-  function handlePinPaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    e.preventDefault();
-    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    const next = [...pin];
-    for (let i = 0; i < 6; i++) next[i] = digits[i] ?? '';
-    setPin(next);
-    const lastIdx = Math.min(digits.length, 5);
-    pinRefs.current[lastIdx]?.focus();
-  }
-
-  async function handleReset(e: React.FormEvent) {
-    e.preventDefault();
-    if (pinString.length !== 6) { setError('Please enter the 6-digit PIN.'); return; }
-    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
-    setLoading(true);
-    setError('');
-    try {
-      await verifyPin(email.trim(), pinString, newPassword);
-      setSuccessMsg('Password reset! Please sign in with your new password.');
-      onSwitch('signin');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to reset password.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (!sent) {
+  if (sent) {
     return (
-      <form onSubmit={handleSendPin} className="space-y-4">
-        <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
-        {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
-        >
-          {loading ? (
-            <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}</span>
-          ) : (
-            <><ArrowRight size={16} /> Send PIN</>
-          )}
-        </button>
+      <div className="space-y-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-4">
+          <p className="font-sans text-sm text-green-700 font-medium mb-1">Check your inbox</p>
+          <p className="font-sans text-sm text-green-700">
+            A password reset link was sent to <strong>{email}</strong>. Click it to set a new password. Check your spam folder if it doesn't arrive within a minute.
+          </p>
+        </div>
         <p className="font-sans text-sm text-center text-muted">
           <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">← Back to sign in</button>
         </p>
-      </form>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleReset} className="space-y-4">
-      <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-        <p className="font-sans text-sm text-green-700">
-            If <strong>{email}</strong> is registered, a 6-digit PIN has been sent. Check your inbox (and spam folder).
-          </p>
-      </div>
-
-      {successMsg && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-          <p className="font-sans text-sm text-green-700">{successMsg}</p>
-        </div>
-      )}
-
-      {/* 6-box PIN input */}
-      <div>
-        <p className="font-mono text-xs text-muted uppercase tracking-wide mb-2">Enter your PIN</p>
-        <div className="flex gap-2">
-          {pin.map((digit, i) => (
-            <input
-              key={i}
-              ref={el => { pinRefs.current[i] = el; }}
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={1}
-              value={digit}
-              onChange={e => handlePinChange(i, e.target.value)}
-              onKeyDown={e => handlePinKeyDown(i, e)}
-              onPaste={i === 0 ? handlePinPaste : undefined}
-              className="w-11 h-11 text-center font-mono text-lg border border-border rounded-xl bg-bg text-text-main outline-none focus:border-accent transition-colors"
-            />
-          ))}
-        </div>
-      </div>
-
-      <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="New password" />
-      <PasswordInput value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm new password" />
-
+    <form onSubmit={handleSendLink} className="space-y-4">
+      <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
       {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
-
       <button
         type="submit"
         disabled={loading}
@@ -311,14 +208,59 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
         {loading ? (
           <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}</span>
         ) : (
-          <><CheckCircle2 size={16} /> Reset Password</>
+          <><ArrowRight size={16} /> Send Reset Link</>
         )}
       </button>
-
-      <p className="font-sans text-xs text-center text-muted">
-        Didn't get a PIN?{' '}
-        <button type="button" onClick={() => setSent(false)} className="text-accent hover:underline">Resend PIN</button>
+      <p className="font-sans text-sm text-center text-muted">
+        <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">← Back to sign in</button>
       </p>
+    </form>
+  );
+}
+
+// ─── Reset Password Form (arrived via recovery link) ──────────────────────
+function ResetPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      await verifyPin('', '', newPassword);
+      await supabase.auth.signOut();
+      onSwitch('signin');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleReset} className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <p className="font-sans text-sm text-blue-700">Enter your new password below.</p>
+      </div>
+      <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="New password" />
+      <PasswordInput value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm new password" />
+      {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
+      >
+        {loading ? (
+          <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}</span>
+        ) : (
+          <><CheckCircle2 size={16} /> Set New Password</>
+        )}
+      </button>
     </form>
   );
 }
@@ -549,10 +491,21 @@ export default function Auth() {
     if (p === 'local') return 'local';
     if (p === 'signup') return 'traveller';
     if (p === 'forgot') return 'forgot';
+    if (p === 'reset') return 'reset';
     return 'signin';
   })();
 
   const [mode, setMode] = useState<Mode>(currentMode);
+
+  // Detect Supabase PASSWORD_RECOVERY event (user clicked the reset link in email)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('reset');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Sync tab when URL changes (e.g. NavBar navigates to /auth?mode=local)
   useEffect(() => {
@@ -575,13 +528,15 @@ export default function Auth() {
     traveller: 'Start exploring like a local',
     local: 'Share your city with the world',
     forgot: 'Reset your password',
+    reset: 'Set a new password',
   };
 
   const formSub: Record<Mode, string> = {
     signin: 'Sign in to your WanderAI account.',
     traveller: 'Create your free traveller account.',
     local: 'Apply to become a verified WanderAI local guide.',
-    forgot: "Enter your email and we'll send a 6-digit PIN.",
+    forgot: "Enter your email and we'll send a reset link.",
+    reset: 'Choose a new password for your account.',
   };
 
   return (
@@ -654,8 +609,8 @@ export default function Auth() {
 
         <div className="flex-1 flex items-start lg:items-center justify-center px-6 py-10">
           <div className="w-full max-w-lg">
-            {/* Tabs — hidden for forgot */}
-            {mode !== 'forgot' && (
+            {/* Tabs — hidden for forgot and reset */}
+            {mode !== 'forgot' && mode !== 'reset' && (
               <div className="flex bg-surface border border-border rounded-2xl p-1 mb-8 gap-1">
                 {TABS.map((t) => (
                   <button
@@ -685,6 +640,7 @@ export default function Auth() {
               {mode === 'traveller' && <TravellerForm onSwitch={setMode} />}
               {mode === 'local' && <LocalForm onSwitch={setMode} />}
               {mode === 'forgot' && <ForgotPasswordForm onSwitch={setMode} />}
+              {mode === 'reset' && <ResetPasswordForm onSwitch={setMode} />}
             </div>
           </div>
         </div>
