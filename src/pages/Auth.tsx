@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth, type LocalSignUpData } from '../lib/auth';
 import { LogoMark } from '../components/Logo';
-import { navigate } from '../lib/router';
+import { useRouter, navigate } from '../lib/router';
 import { Eye, EyeOff, ArrowRight, CheckCircle2, Globe, Clock, Star } from 'lucide-react';
 import { SUPPORTED_CITIES } from '../data/seededLocals';
 import { sendPin } from '../api/sendPin';
@@ -106,7 +106,7 @@ function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setError('');
     try {
       await signIn(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign in failed.';
       setError(msg.includes('Invalid') ? 'Incorrect email or password.' : msg);
@@ -178,9 +178,20 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setError('');
     try {
       await sendPin(email.trim());
+      // Always advance to PIN step — edge function returns success even for
+      // unregistered emails (email enumeration protection). The green banner
+      // tells the user to check their inbox; if no email arrives it means
+      // the address isn't registered.
       setSent(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send PIN.');
+      const msg = err instanceof Error ? err.message : 'Failed to send PIN.';
+      if (msg.includes('not configured') || msg.includes('service')) {
+        setError('Password reset is temporarily unavailable. Please contact support.');
+      } else if (msg.includes('wait 60')) {
+        setError('Please wait 60 seconds before requesting another PIN.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -254,7 +265,9 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   return (
     <form onSubmit={handleReset} className="space-y-4">
       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-        <p className="font-sans text-sm text-green-700">PIN sent! Check your inbox for a 6-digit code.</p>
+        <p className="font-sans text-sm text-green-700">
+            If <strong>{email}</strong> is registered, a 6-digit PIN has been sent. Check your inbox (and spam folder).
+          </p>
       </div>
 
       {successMsg && (
@@ -529,17 +542,26 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
 // ─── Main Auth Page ────────────────────────────────────────────────────────
 export default function Auth() {
   const { user } = useAuth();
-  const initialMode: Mode = (() => {
+  const { pathname } = useRouter();
+
+  const currentMode: Mode = (() => {
     const p = new URLSearchParams(window.location.search).get('mode');
     if (p === 'local') return 'local';
     if (p === 'signup') return 'traveller';
     if (p === 'forgot') return 'forgot';
     return 'signin';
   })();
-  const [mode, setMode] = useState<Mode>(initialMode);
+
+  const [mode, setMode] = useState<Mode>(currentMode);
+
+  // Sync tab when URL changes (e.g. NavBar navigates to /auth?mode=local)
+  useEffect(() => {
+    setMode(currentMode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
-    if (user) navigate('/');
+    if (user) navigate('/dashboard');
   }, [user]);
 
   const TABS: { key: Mode; label: string }[] = [

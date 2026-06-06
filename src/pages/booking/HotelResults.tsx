@@ -5,6 +5,7 @@ import HotelSearchForm from '../../components/booking/HotelSearchForm';
 import SearchSummaryBar from '../../components/booking/SearchSummaryBar';
 import { generateHotels, type MockHotel } from '../../data/mockHotels';
 import type { HotelSearchParams } from '../../components/booking/HotelSearchForm';
+import { navigate } from '../../lib/router';
 
 function SkeletonCard() {
   return (
