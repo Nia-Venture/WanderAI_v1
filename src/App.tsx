@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { useRouter } from './lib/router';
 import { AuthProvider } from './lib/auth';
+import { supabase } from './lib/supabase';
+import { navigate } from './lib/router';
 import Landing from './pages/Landing';
 import City from './pages/City';
 import BecomeALocal from './pages/BecomeALocal';
@@ -45,6 +48,15 @@ function Routes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        navigate('/auth?mode=reset');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <AuthProvider>
       <Routes />
