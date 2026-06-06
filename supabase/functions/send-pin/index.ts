@@ -116,15 +116,16 @@ Deno.serve(async (req) => {
       }),
     });
 
+    const resendBody = await emailRes.text();
     if (!emailRes.ok) {
-      const errBody = await emailRes.text();
-      console.error('[send-pin] Resend API error:', emailRes.status, errBody);
+      console.error('[send-pin] Resend error', emailRes.status, resendBody);
       return new Response(
-        JSON.stringify({ error: 'Failed to send PIN email. Please try again.' }),
+        JSON.stringify({ error: `Failed to send PIN email (Resend ${emailRes.status}): ${resendBody}` }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('[send-pin] Resend accepted email for', email, '| response:', resendBody);
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
