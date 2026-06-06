@@ -178,9 +178,20 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setError('');
     try {
       await sendPin(email.trim());
+      // Always advance to PIN step — edge function returns success even for
+      // unregistered emails (email enumeration protection). The green banner
+      // tells the user to check their inbox; if no email arrives it means
+      // the address isn't registered.
       setSent(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to send PIN.');
+      const msg = err instanceof Error ? err.message : 'Failed to send PIN.';
+      if (msg.includes('not configured') || msg.includes('service')) {
+        setError('Password reset is temporarily unavailable. Please contact support.');
+      } else if (msg.includes('wait 60')) {
+        setError('Please wait 60 seconds before requesting another PIN.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -254,7 +265,9 @@ function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   return (
     <form onSubmit={handleReset} className="space-y-4">
       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-        <p className="font-sans text-sm text-green-700">PIN sent! Check your inbox for a 6-digit code.</p>
+        <p className="font-sans text-sm text-green-700">
+            If <strong>{email}</strong> is registered, a 6-digit PIN has been sent. Check your inbox (and spam folder).
+          </p>
       </div>
 
       {successMsg && (
