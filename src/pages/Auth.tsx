@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth, type LocalSignUpData } from '../lib/auth';
 import { LogoMark } from '../components/Logo';
-import { navigate } from '../lib/router';
+import { useRouter, navigate } from '../lib/router';
 import { Eye, EyeOff, ArrowRight, CheckCircle2, Globe, Clock, Star } from 'lucide-react';
 import { SUPPORTED_CITIES } from '../data/seededLocals';
 import { sendPin } from '../api/sendPin';
@@ -529,17 +529,26 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
 // ─── Main Auth Page ────────────────────────────────────────────────────────
 export default function Auth() {
   const { user } = useAuth();
-  const initialMode: Mode = (() => {
+  const { pathname } = useRouter();
+
+  const currentMode: Mode = (() => {
     const p = new URLSearchParams(window.location.search).get('mode');
     if (p === 'local') return 'local';
     if (p === 'signup') return 'traveller';
     if (p === 'forgot') return 'forgot';
     return 'signin';
   })();
-  const [mode, setMode] = useState<Mode>(initialMode);
+
+  const [mode, setMode] = useState<Mode>(currentMode);
+
+  // Sync tab when URL changes (e.g. NavBar navigates to /auth?mode=local)
+  useEffect(() => {
+    setMode(currentMode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   useEffect(() => {
-    if (user) navigate('/');
+    if (user) navigate('/dashboard');
   }, [user]);
 
   const TABS: { key: Mode; label: string }[] = [
