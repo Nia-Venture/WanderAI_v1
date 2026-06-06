@@ -37,7 +37,8 @@ export default function BookingConfirmation() {
 
   useEffect(() => {
     const hRaw = sessionStorage.getItem('wander_selected_hotel');
-    if (hRaw) setHotel(JSON.parse(hRaw));
+    if (!hRaw) { navigate('/hotels'); return; }
+    setHotel(JSON.parse(hRaw));
     const hsRaw = sessionStorage.getItem('wander_hotel_search');
     if (hsRaw) {
       const p = JSON.parse(hsRaw);

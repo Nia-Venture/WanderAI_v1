@@ -106,7 +106,7 @@ function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setError('');
     try {
       await signIn(email, password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sign in failed.';
       setError(msg.includes('Invalid') ? 'Incorrect email or password.' : msg);

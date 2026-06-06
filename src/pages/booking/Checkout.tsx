@@ -77,7 +77,8 @@ export default function Checkout() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem('wander_selected_hotel');
-    if (raw) setHotel(JSON.parse(raw));
+    if (!raw) { navigate('/hotels'); return; }
+    setHotel(JSON.parse(raw));
     const sRaw = sessionStorage.getItem('wander_hotel_search');
     if (sRaw) {
       const p = JSON.parse(sRaw);

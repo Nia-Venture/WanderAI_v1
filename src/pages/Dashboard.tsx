@@ -23,16 +23,16 @@ export default function Dashboard() {
       });
   }, [user]);
 
-  // Redirect to login if no auth
+  // Redirect to auth if not signed in
   useEffect(() => {
     if (!authLoading && !user) {
-      navigate('/login');
+      navigate('/auth');
     }
   }, [authLoading, user]);
 
   async function handleSignOut() {
     await signOut();
-    navigate('/login');
+    navigate('/');
   }
 
   if (authLoading) {
