@@ -40,17 +40,22 @@ function Avatar({ local }: { local: LocalProfile }) {
   );
 }
 
-function TypingDots() {
+function TypingDots({ status }: { status: string }) {
   return (
-    <span className="flex gap-1 items-center h-4">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce"
-          style={{ animationDelay: `${i * 0.15}s` }}
-        />
-      ))}
-    </span>
+    <div className="chat-bubble-local px-3.5 py-2.5 space-y-1.5">
+      <span className="flex gap-1 items-center h-4">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-muted animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </span>
+      {status && (
+        <p className="font-mono text-xs text-muted animate-fade-in">{status}</p>
+      )}
+    </div>
   );
 }
 
@@ -71,8 +76,9 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
   ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showTyping, setShowTyping] = useState(false);
   const [typingStatus, setTypingStatus] = useState('');
-  const [streamingId, setStreamingId] = useState<string | null>(null);
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [memoryContext, setMemoryContext] = useState('');
@@ -81,7 +87,6 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load memory for authenticated users
   useEffect(() => {
     if (!user) return;
     loadPreferences(user.id).then((prefs) => {
@@ -91,11 +96,12 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingId]);
+  }, [messages, showTyping]);
 
   function startTypingCycle() {
     let idx = Math.floor(Math.random() * TYPING_STATUSES.length);
     setTypingStatus(TYPING_STATUSES[idx]);
+    setShowTyping(true);
     typingTimerRef.current = setInterval(() => {
       idx = (idx + 1) % TYPING_STATUSES.length;
       setTypingStatus(TYPING_STATUSES[idx]);
@@ -107,6 +113,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       clearInterval(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    setShowTyping(false);
     setTypingStatus('');
   }
 
@@ -128,7 +135,6 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       setSending(true);
       startTypingCycle();
 
-      // Passively update user preferences in background
       if (user) {
         const signals = extractPreferenceSignals(content);
         if (Object.keys(signals).length > 0) {
@@ -138,6 +144,24 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
 
       const replyId = crypto.randomUUID();
 
+      // Local flag — avoids stale closure on React state (streamingId would
+      // always read null inside the async callback if used directly).
+      let hasStartedStreaming = false;
+
+      // Token buffer + rAF handle for batching — prevents a re-render per token
+      let tokenBuffer = '';
+      let rafHandle: number | null = null;
+
+      function flushBuffer() {
+        rafHandle = null;
+        if (!tokenBuffer) return;
+        const chunk = tokenBuffer;
+        tokenBuffer = '';
+        setMessages((prev) =>
+          prev.map((m) => (m.id === replyId ? { ...m, content: m.content + chunk } : m))
+        );
+      }
+
       await chatWithLocalStream(
         city,
         local,
@@ -146,29 +170,39 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
         memoryContext,
         {
           onToken: (token) => {
-            // First token — replace typing indicator with streaming message
-            if (!streamingId) {
+            if (!hasStartedStreaming) {
+              // First token: hide typing indicator, create the message bubble
+              hasStartedStreaming = true;
               stopTypingCycle();
-              setStreamingId(replyId);
+              setStreamingMsgId(replyId);
               setMessages((prev) => [
                 ...prev,
                 { id: replyId, role: 'local', content: token, timestamp: new Date() },
               ]);
-            } else {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === replyId ? { ...m, content: m.content + token } : m
-                )
-              );
+              return;
+            }
+
+            // Subsequent tokens: buffer and flush on next animation frame
+            tokenBuffer += token;
+            if (rafHandle === null) {
+              rafHandle = requestAnimationFrame(flushBuffer);
             }
           },
+
           onDone: (sugg) => {
+            // Flush any buffered tokens before finalising
+            if (rafHandle !== null) {
+              cancelAnimationFrame(rafHandle);
+              rafHandle = null;
+            }
+            flushBuffer();
+
             stopTypingCycle();
-            setStreamingId(null);
+            setStreamingMsgId(null);
             setSending(false);
             if (sugg) setSuggestion(sugg);
 
-            // Strip NEXT: line from the final message
+            // Strip the NEXT: suggestion line from the displayed message
             setMessages((prev) =>
               prev.map((m) => {
                 if (m.id !== replyId) return m;
@@ -179,17 +213,23 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
 
             inputRef.current?.focus();
           },
-          onError: (err) => {
+
+          onError: () => {
+            if (rafHandle !== null) {
+              cancelAnimationFrame(rafHandle);
+              rafHandle = null;
+            }
             stopTypingCycle();
-            setStreamingId(null);
+            setStreamingMsgId(null);
             setSending(false);
-            setError('Could not reach the network. Please try again.');
-            console.error(err);
+            setError('Something went wrong — please try again.');
+            inputRef.current?.focus();
           },
         }
       );
     },
-    [input, sending, messages, mode, memoryContext, city, local, user, streamingId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [input, sending, messages, mode, memoryContext, city, local, user]
   );
 
   function handleKey(e: React.KeyboardEvent) {
@@ -197,11 +237,6 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       e.preventDefault();
       send();
     }
-  }
-
-  function handleModeChange(m: TravelMode) {
-    setMode(m);
-    setSuggestion(null);
   }
 
   const starterQuestions = MODE_STARTER_QUESTIONS[mode];
@@ -244,7 +279,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
           {ALL_MODES.map((m) => (
             <button
               key={m}
-              onClick={() => handleModeChange(m)}
+              onClick={() => { setMode(m); setSuggestion(null); }}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-sans text-xs font-semibold whitespace-nowrap transition-all ${
                 mode === m
                   ? 'bg-accent text-white'
@@ -270,34 +305,25 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
               <div
                 className={`px-3.5 py-2.5 text-sm font-sans leading-relaxed ${
                   msg.role === 'user' ? 'chat-bubble-traveller' : 'chat-bubble-local'
-                } ${msg.id === streamingId ? 'border-l-2 border-accent/40' : ''}`}
-              >
-                {msg.content}
-                {msg.id === streamingId && (
-                  <span className="inline-block w-0.5 h-4 bg-accent/60 ml-0.5 animate-pulse align-middle" />
-                )}
-              </div>
-              <p
-                className={`font-mono text-xs text-muted mt-1 ${
-                  msg.role === 'user' ? 'text-right' : ''
                 }`}
               >
+                {msg.content}
+                {msg.id === streamingMsgId && (
+                  <span className="inline-block w-0.5 h-[1em] bg-current opacity-60 ml-0.5 animate-pulse align-middle" />
+                )}
+              </div>
+              <p className={`font-mono text-xs text-muted mt-1 ${msg.role === 'user' ? 'text-right' : ''}`}>
                 {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
         ))}
 
-        {/* Typing indicator */}
-        {sending && !streamingId && (
+        {/* Typing indicator — shown until first token arrives */}
+        {showTyping && (
           <div className="flex gap-2.5 animate-fade-in">
             <Avatar local={local} />
-            <div className="chat-bubble-local px-3.5 py-2.5 space-y-1">
-              <TypingDots />
-              {typingStatus && (
-                <p className="font-mono text-xs text-muted">{typingStatus}</p>
-              )}
-            </div>
+            <TypingDots status={typingStatus} />
           </div>
         )}
 
