@@ -15,20 +15,39 @@ import type { LocalProfile } from '../data/seededLocals';
 import { ArrowLeft, ArrowUp } from 'lucide-react';
 
 const CITY_PHOTO_IDS: Record<string, string> = {
-  dubai: '1534560/pexels-photo-1534560',
-  tokyo: '2506923/pexels-photo-2506923',
-  london: '460672/pexels-photo-460672',
-  bangkok: '1031659/pexels-photo-1031659',
-  paris: '739407/pexels-photo-739407',
-  nairobi: '3992953/pexels-photo-3992953',
+  dubai:           '1534560/pexels-photo-1534560',
+  tokyo:           '2506923/pexels-photo-2506923',
+  london:          '460672/pexels-photo-460672',
+  bangkok:         '1031659/pexels-photo-1031659',
+  paris:           '739407/pexels-photo-739407',
+  nairobi:         '3992953/pexels-photo-3992953',
+  'new york':      '2224935/pexels-photo-2224935',
+  singapore:       '2265876/pexels-photo-2265876',
+  amsterdam:       '1414467/pexels-photo-1414467',
+  istanbul:        '2044434/pexels-photo-2044434',
+  'mexico city':   '2168974/pexels-photo-2168974',
+  mumbai:          '2846217/pexels-photo-2846217',
+  sydney:          '1878293/pexels-photo-1878293',
+  'cape town':     '2473183/pexels-photo-2473183',
+  barcelona:       '1388030/pexels-photo-1388030',
+  lisbon:          '2246476/pexels-photo-2246476',
+  seoul:           '2149468/pexels-photo-2149468',
+  berlin:          '109629/pexels-photo-109629',
+  rome:            '1797161/pexels-photo-1797161',
+  cairo:           '3689885/pexels-photo-3689885',
+  'buenos aires':  '2993370/pexels-photo-2993370',
+  toronto:         '1486222/pexels-photo-1486222',
+  marrakech:       '2611249/pexels-photo-2611249',
+  bali:            '1802183/pexels-photo-1802183',
+  colombo:         '3997385/pexels-photo-3997385',
 };
-
-const FALLBACK_PHOTO = '11811982/pexels-photo-11811982';
 
 function getCityHero(city: string): string {
   const key = city.toLowerCase().trim();
-  const path = CITY_PHOTO_IDS[key] ?? FALLBACK_PHOTO;
-  return `https://images.pexels.com/photos/${path}.jpeg?auto=compress&cs=tinysrgb&w=1200`;
+  const path = CITY_PHOTO_IDS[key];
+  if (path) return `https://images.pexels.com/photos/${path}.jpeg?auto=compress&cs=tinysrgb&w=1200`;
+  const query = encodeURIComponent(city + ' city skyline');
+  return `https://source.unsplash.com/1200x600/?${query}`;
 }
 
 interface CityProps {

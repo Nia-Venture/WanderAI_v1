@@ -1,13 +1,16 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*';
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
   try {
     const { email, pin, newPassword } = await req.json();
     if (!email || !pin || !newPassword) {
@@ -26,6 +29,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
+    // ── Verify PIN hash ─────────────────────────────────────────────────────
     const encoder = new TextEncoder();
     const data = encoder.encode(pin + (Deno.env.get('OTP_SALT') ?? 'wanderai-otp-salt'));
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -49,18 +53,20 @@ serve(async (req) => {
       });
     }
 
+    // Mark PIN as used immediately
     await supabase.from('otp_pins').update({ used: true }).eq('id', otpRow.id);
 
-    const { data: allUsers } = await supabase.auth.admin.listUsers();
-    const user = allUsers?.users?.find(
-      (u) => u.email?.toLowerCase() === email.toLowerCase()
-    );
-    if (!user) {
+    // ── Lookup user directly (replaces broken listUsers pagination) ─────────
+    const { data: { user }, error: lookupError } =
+      await supabase.auth.admin.getUserByEmail(email.toLowerCase());
+
+    if (lookupError || !user) {
       return new Response(JSON.stringify({ error: 'User not found.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    // ── Update password ─────────────────────────────────────────────────────
     const { error: updateError } = await supabase.auth.admin.updateUserById(
       user.id, { password: newPassword }
     );
@@ -73,8 +79,9 @@ serve(async (req) => {
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
+
   } catch (err) {
-    console.error('verify-pin error:', err);
+    console.error('[verify-pin] Unexpected error:', err);
     return new Response(JSON.stringify({ error: 'Internal server error.' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

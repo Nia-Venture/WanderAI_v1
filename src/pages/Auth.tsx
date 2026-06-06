@@ -325,7 +325,7 @@ function TravellerForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Required';
     if (!email.trim()) e.email = 'Required';
-    if (password.length < 6) e.password = 'At least 6 characters';
+    if (password.length < 8) e.password = 'At least 8 characters';
     if (password !== confirm) e.confirm = 'Passwords do not match';
     return e;
   }
@@ -398,7 +398,7 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = 'Required';
     if (!form.email.trim()) e.email = 'Required';
-    if (form.password.length < 6) e.password = 'At least 6 characters';
+    if (form.password.length < 8) e.password = 'At least 8 characters';
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match';
     if (!form.city.trim()) e.city = 'Required';
     else if (!SUPPORTED_CITIES.some(c => c.toLowerCase() === form.city.trim().toLowerCase())) {

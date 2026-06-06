@@ -7,13 +7,8 @@ import { LogOut, User, MapPin, Calendar, Bell } from 'lucide-react';
 
 export default function Dashboard() {
   const { user, profile, signOut, authLoading } = useAuth();
-  const [token, setToken] = useState<string | null>(null);
   const [tripsPlanned, setTripsPlanned] = useState(0);
   const [citiesExplored, setCitiesExplored] = useState(0);
-
-  useEffect(() => {
-    setToken(localStorage.getItem('authToken'));
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -30,13 +25,12 @@ export default function Dashboard() {
 
   // Redirect to login if no auth
   useEffect(() => {
-    if (!authLoading && !user && !token) {
+    if (!authLoading && !user) {
       navigate('/login');
     }
-  }, [authLoading, user, token]);
+  }, [authLoading, user]);
 
   async function handleSignOut() {
-    localStorage.removeItem('authToken');
     await signOut();
     navigate('/login');
   }
@@ -53,7 +47,7 @@ export default function Dashboard() {
   }
 
   // No auth - don't render anything (will redirect)
-  if (!user && !token) return null;
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-bg">

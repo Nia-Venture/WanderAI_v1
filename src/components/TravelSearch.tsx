@@ -234,7 +234,7 @@ export default function TravelSearch({ cityName }: TravelSearchProps) {
           Flights & Hotels to {cityDisplay}
         </h2>
         <p className="font-sans text-sm text-white/60">
-          AI-powered travel search — real routes, real prices
+          AI-estimated flights & hotels — for planning inspiration only
         </p>
       </div>
 

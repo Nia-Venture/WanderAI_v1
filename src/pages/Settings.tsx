@@ -73,7 +73,7 @@ export default function Settings() {
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (newPassword.length < 6) { setPwError('Password must be at least 6 characters.'); return; }
+    if (newPassword.length < 8) { setPwError('Password must be at least 8 characters.'); return; }
     if (newPassword !== confirmPassword) { setPwError('Passwords do not match.'); return; }
     setPwSaving(true);
     setPwError('');
@@ -142,7 +142,7 @@ export default function Settings() {
               <h2 className="font-display font-semibold text-primary text-lg">Change Password</h2>
             </div>
             <form onSubmit={handleChangePassword} className="space-y-4">
-              <FieldInput label="New Password" value={newPassword} onChange={setNewPassword} type="password" placeholder="At least 6 characters" />
+              <FieldInput label="New Password" value={newPassword} onChange={setNewPassword} type="password" placeholder="At least 8 characters" />
               <FieldInput label="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} type="password" placeholder="Repeat new password" error={pwError} />
               <div className="flex items-center gap-3">
                 <button
