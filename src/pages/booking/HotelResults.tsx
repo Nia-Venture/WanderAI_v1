@@ -49,7 +49,7 @@ export default function HotelResults() {
         setLoading(false);
       }, 1200);
     } else {
-      setLoading(false);
+      navigate('/hotels');
     }
   }, []);
 

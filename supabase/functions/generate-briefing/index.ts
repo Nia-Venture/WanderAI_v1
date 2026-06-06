@@ -59,7 +59,15 @@ Deno.serve(async (req: Request) => {
     }
 
     const cityLower = city.toLowerCase().trim();
-    const country = CITY_COUNTRY[cityLower] ?? "the world";
+
+    if (!Object.prototype.hasOwnProperty.call(CITY_COUNTRY, cityLower)) {
+      return new Response(
+        JSON.stringify({ error: "City not supported" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const country = CITY_COUNTRY[cityLower];
     const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
 
     const prompt = `You are a verified local expert for ${cityDisplay}, ${country}.

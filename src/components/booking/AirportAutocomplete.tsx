@@ -121,6 +121,11 @@ export default function AirportAutocomplete({ value, onChange, placeholder = 'Ci
           ))}
         </div>
       )}
+      {open && results.length === 0 && query.length >= 2 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-chat z-50 px-4 py-3 animate-fade-in">
+          <p className="font-sans text-sm text-muted">No airports found for "{query}"</p>
+        </div>
+      )}
     </div>
   );
 }

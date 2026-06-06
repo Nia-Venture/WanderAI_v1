@@ -53,7 +53,7 @@ export default function FlightResults() {
         setLoading(false);
       }, 1200);
     } else {
-      setLoading(false);
+      navigate('/flights');
     }
   }, []);
 

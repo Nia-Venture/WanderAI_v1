@@ -22,7 +22,7 @@ export default function FlightCard({ flight }: Props) {
   const stopLabel = flight.stops === 0
     ? 'Direct'
     : flight.stops === 1
-    ? `1 stop via ${flight.stopVia ?? ''}`
+    ? `1 stop${flight.stopVia ? ` via ${flight.stopVia}` : ''}`
     : `${flight.stops} stops`;
 
   return (

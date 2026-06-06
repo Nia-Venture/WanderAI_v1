@@ -72,7 +72,7 @@ export default function HotelCard({ hotel }: Props) {
         <div className="flex items-center gap-1.5 flex-wrap">
           {hotel.amenities.slice(0, 3).map((a) => (
             <span key={a} className="inline-flex items-center gap-1 bg-bg border border-border rounded-full px-2 py-0.5 font-sans text-xs text-muted">
-              {AMENITY_ICONS[a]}
+              {AMENITY_ICONS[a] ?? null}
               {a}
             </span>
           ))}

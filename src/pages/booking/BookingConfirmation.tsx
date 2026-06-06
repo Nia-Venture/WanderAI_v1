@@ -71,7 +71,8 @@ export default function BookingConfirmation() {
     }
   }, []);
 
-  const type = new URLSearchParams(window.location.search).get('type') ?? (flight ? 'flight' : hotel ? 'hotel' : null);
+  const rawType = new URLSearchParams(window.location.search).get('type');
+  const type = rawType ?? (flight ? 'flight' : hotel ? 'hotel' : 'flight');
 
   return (
     <>

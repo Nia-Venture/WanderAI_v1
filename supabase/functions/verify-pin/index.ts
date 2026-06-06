@@ -53,9 +53,6 @@ serve(async (req) => {
       });
     }
 
-    // Mark PIN as used immediately
-    await supabase.from('otp_pins').update({ used: true }).eq('id', otpRow.id);
-
     // ── Lookup user directly (replaces broken listUsers pagination) ─────────
     const { data: { user }, error: lookupError } =
       await supabase.auth.admin.getUserByEmail(email.toLowerCase());
@@ -75,6 +72,9 @@ serve(async (req) => {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Mark PIN used only after password update succeeds
+    await supabase.from('otp_pins').update({ used: true }).eq('id', otpRow.id);
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
