@@ -25,7 +25,7 @@ const PAIN_POINTS = [
 const FEATURED_CITIES = ['Dubai', 'Tokyo', 'London', 'Bangkok', 'Paris', 'Nairobi'];
 
 const HERO_IMAGE =
-  'https://images.pexels.com/photos/11811982/pexels-photo-11811982.jpeg?auto=compress&cs=tinysrgb&w=1920';
+  'https://images.pexels.com/photos/1486222/pexels-photo-1486222.jpeg?auto=compress&cs=tinysrgb&w=1920';
 
 const TESTIMONIALS = [
   {
@@ -62,8 +62,8 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-16 overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
+          className="absolute inset-0 bg-cover bg-no-repeat"
+          style={{ backgroundImage: `url(${HERO_IMAGE})`, backgroundPosition: 'center 40%' }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/35 to-black/70" />
         <div className="absolute inset-0 bg-gradient-to-t from-primary/40 via-transparent to-transparent" />
@@ -110,8 +110,7 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 opacity-50">
-          <span className="font-mono text-xs text-white tracking-widest uppercase">Explore</span>
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-50">
           <div className="w-px h-10 bg-gradient-to-b from-white to-transparent" />
         </div>
       </section>
