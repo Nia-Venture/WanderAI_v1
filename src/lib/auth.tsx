@@ -168,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export async function trackCityVisit(cityName: string) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('city_visits').insert({ user_id: user.id, city: cityName.toLowerCase() });
+}
+
 export function useAuth() {
   return useContext(AuthContext);
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth, type LocalSignUpData } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import { LogoMark } from '../components/Logo';
 import { navigate } from '../lib/router';
 import { Eye, EyeOff, ArrowRight, CheckCircle2, Globe, Clock, Star } from 'lucide-react';
+import { SUPPORTED_CITIES } from '../data/seededLocals';
 
-type Mode = 'signin' | 'traveller' | 'local';
+type Mode = 'signin' | 'traveller' | 'local' | 'forgot' | 'reset';
 
 const HERO_IMAGE =
   'https://images.pexels.com/photos/11811982/pexels-photo-11811982.jpeg?auto=compress&cs=tinysrgb&w=1200';
@@ -203,14 +205,133 @@ function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
           )}
         </button>
 
-        <p className="font-sans text-sm text-center text-muted">
-          New to WanderAI?{' '}
-          <button type="button" onClick={() => onSwitch('traveller')} className="text-accent hover:underline font-medium">
-            Create a free account
+        <div className="flex items-center justify-between">
+          <p className="font-sans text-sm text-muted">
+            New to WanderAI?{' '}
+            <button type="button" onClick={() => onSwitch('traveller')} className="text-accent hover:underline font-medium">
+              Create a free account
+            </button>
+          </p>
+          <button type="button" onClick={() => onSwitch('forgot')} className="font-sans text-sm text-muted hover:text-accent transition-colors">
+            Forgot password?
           </button>
-        </p>
+        </div>
       </form>
     </div>
+  );
+}
+
+// ─── Forgot Password Form ──────────────────────────────────────────────────
+function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) { setError('Please enter your email.'); return; }
+    setLoading(true);
+    setError('');
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin + '/auth?mode=reset',
+    });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <div className="text-center py-6 space-y-4">
+        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+          <CheckCircle2 size={28} className="text-success" />
+        </div>
+        <h3 className="font-display font-bold text-primary text-lg">Check your email</h3>
+        <p className="font-sans text-sm text-muted">We sent a password reset link to <span className="font-medium text-text-main">{email}</span>.</p>
+        <button type="button" onClick={() => onSwitch('signin')} className="font-sans text-sm text-accent hover:underline font-medium">
+          Back to sign in
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="font-sans text-sm text-muted">Enter your account email and we'll send you a reset link.</p>
+      <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
+      {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
+      >
+        {loading ? (
+          <span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+        ) : (
+          <><ArrowRight size={16} /> Send Reset Link</>
+        )}
+      </button>
+      <p className="font-sans text-sm text-center text-muted">
+        <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">Back to sign in</button>
+      </p>
+    </form>
+  );
+}
+
+// ─── Reset Password Form ───────────────────────────────────────────────────
+function ResetPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (password !== confirm) { setError('Passwords do not match.'); return; }
+    setLoading(true);
+    setError('');
+    const { error: err } = await supabase.auth.updateUser({ password });
+    setLoading(false);
+    if (err) { setError(err.message); return; }
+    setDone(true);
+  }
+
+  if (done) {
+    return (
+      <div className="text-center py-6 space-y-4">
+        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
+          <CheckCircle2 size={28} className="text-success" />
+        </div>
+        <h3 className="font-display font-bold text-primary text-lg">Password updated!</h3>
+        <p className="font-sans text-sm text-muted">You can now sign in with your new password.</p>
+        <button type="button" onClick={() => onSwitch('signin')} className="font-sans text-sm text-accent hover:underline font-medium">
+          Sign in
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="font-sans text-sm text-muted">Choose a new password for your account.</p>
+      <PasswordInput value={password} onChange={setPassword} placeholder="New password" />
+      <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm new password" />
+      {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
+      >
+        {loading ? (
+          <span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+        ) : (
+          <><CheckCircle2 size={16} /> Update Password</>
+        )}
+      </button>
+    </form>
   );
 }
 
@@ -242,7 +363,7 @@ function TravellerForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setGlobalError('');
     try {
       await signUpTraveller(name.trim(), email.trim(), password);
-      navigate('/');
+      navigate('/welcome');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed.';
       setGlobalError(msg.includes('already') ? 'Email already registered. Try signing in.' : msg);
@@ -307,6 +428,9 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     if (form.password.length < 6) e.password = 'At least 6 characters';
     if (form.password !== form.confirm) e.confirm = 'Passwords do not match';
     if (!form.city.trim()) e.city = 'Required';
+    else if (!SUPPORTED_CITIES.some(c => c.toLowerCase() === form.city.trim().toLowerCase())) {
+      e.city = 'Please choose a city from the supported list.';
+    }
     if (!form.years.trim() || isNaN(Number(form.years))) e.years = 'Enter a number';
     if (!form.languages.trim()) e.languages = 'Required';
     if (!form.bio.trim()) e.bio = 'Required';
@@ -350,7 +474,19 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
         </div>
         <div>
           <label className={lc}>City you live in</label>
-          <FieldInput value={form.city} onChange={v => set('city', v)} placeholder="e.g. Dubai" error={errors.city} />
+          <>
+            <datalist id="city-list">
+              {SUPPORTED_CITIES.map(c => <option key={c} value={c} />)}
+            </datalist>
+            <input
+              list="city-list"
+              value={form.city}
+              onChange={e => set('city', e.target.value)}
+              placeholder="e.g. Dubai"
+              className={`w-full bg-bg border rounded-xl px-4 py-3 font-sans text-sm text-text-main placeholder-muted outline-none transition-colors ${errors.city ? 'border-red-400' : 'border-border focus:border-accent'}`}
+            />
+            {errors.city && <p className="font-sans text-xs text-red-500 mt-1">{errors.city}</p>}
+          </>
         </div>
       </div>
 
@@ -424,13 +560,15 @@ export default function Auth() {
     const p = new URLSearchParams(window.location.search).get('mode');
     if (p === 'local') return 'local';
     if (p === 'signup') return 'traveller';
+    if (p === 'forgot') return 'forgot';
+    if (p === 'reset') return 'reset';
     return 'signin';
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
 
   useEffect(() => {
-    if (user) navigate('/');
-  }, [user]);
+    if (user && mode !== 'reset') navigate('/');
+  }, [user, mode]);
 
   const TABS: { key: Mode; label: string }[] = [
     { key: 'signin', label: 'Sign In' },
@@ -438,17 +576,21 @@ export default function Auth() {
     { key: 'local', label: 'Join as Local' },
   ];
 
-  const formTitle = {
+  const formTitle: Record<Mode, string> = {
     signin: 'Welcome back',
     traveller: 'Start exploring like a local',
     local: 'Share your city with the world',
-  }[mode];
+    forgot: 'Reset your password',
+    reset: 'Choose a new password',
+  };
 
-  const formSub = {
+  const formSub: Record<Mode, string> = {
     signin: 'Sign in to your WanderAI account.',
     traveller: 'Create your free traveller account.',
     local: 'Apply to become a verified WanderAI local guide.',
-  }[mode];
+    forgot: 'We\'ll email you a secure reset link.',
+    reset: 'Enter a new password for your account.',
+  };
 
   return (
     <div className="min-h-screen flex">
@@ -520,27 +662,29 @@ export default function Auth() {
 
         <div className="flex-1 flex items-start lg:items-center justify-center px-6 py-10">
           <div className="w-full max-w-lg">
-            {/* Tabs */}
-            <div className="flex bg-surface border border-border rounded-2xl p-1 mb-8 gap-1">
-              {TABS.map((t) => (
-                <button
-                  key={t.key}
-                  onClick={() => setMode(t.key)}
-                  className={`flex-1 font-sans text-xs font-semibold py-2.5 rounded-xl transition-all ${
-                    mode === t.key
-                      ? 'bg-primary text-white shadow-sm'
-                      : 'text-muted hover:text-primary'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            {/* Tabs — hidden for forgot/reset */}
+            {mode !== 'forgot' && mode !== 'reset' && (
+              <div className="flex bg-surface border border-border rounded-2xl p-1 mb-8 gap-1">
+                {TABS.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setMode(t.key)}
+                    className={`flex-1 font-sans text-xs font-semibold py-2.5 rounded-xl transition-all ${
+                      mode === t.key
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-muted hover:text-primary'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Heading */}
             <div className="mb-6">
-              <h1 className="font-display font-bold text-primary text-2xl mb-1">{formTitle}</h1>
-              <p className="font-sans text-sm text-muted">{formSub}</p>
+              <h1 className="font-display font-bold text-primary text-2xl mb-1">{formTitle[mode]}</h1>
+              <p className="font-sans text-sm text-muted">{formSub[mode]}</p>
             </div>
 
             {/* Form */}
@@ -548,6 +692,8 @@ export default function Auth() {
               {mode === 'signin' && <SignInForm onSwitch={setMode} />}
               {mode === 'traveller' && <TravellerForm onSwitch={setMode} />}
               {mode === 'local' && <LocalForm onSwitch={setMode} />}
+              {mode === 'forgot' && <ForgotPasswordForm onSwitch={setMode} />}
+              {mode === 'reset' && <ResetPasswordForm onSwitch={setMode} />}
             </div>
           </div>
         </div>

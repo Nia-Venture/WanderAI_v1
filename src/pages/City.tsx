@@ -8,6 +8,7 @@ import ChatPanel from '../components/ChatPanel';
 import TravelSearch from '../components/TravelSearch';
 import { getCityLocals } from '../data/seededLocals';
 import { generateBriefing } from '../api/generateBriefing';
+import { trackCityVisit } from '../lib/auth';
 import type { CityBriefing } from '../types/briefing';
 import type { LocalProfile } from '../data/seededLocals';
 import { ArrowLeft } from 'lucide-react';
@@ -41,6 +42,7 @@ export default function City({ cityName }: CityProps) {
         if (!ctrl.signal.aborted) {
           setBriefing(data);
           setLoading(false);
+          trackCityVisit(cityName);
         }
       })
       .catch((err) => {

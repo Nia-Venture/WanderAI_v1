@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 import { LogoMark } from '../components/Logo';
 import { navigate } from '../lib/router';
 import { LogOut, User, MapPin, Calendar, Bell } from 'lucide-react';
@@ -7,10 +8,25 @@ import { LogOut, User, MapPin, Calendar, Bell } from 'lucide-react';
 export default function Dashboard() {
   const { user, profile, signOut, authLoading } = useAuth();
   const [token, setToken] = useState<string | null>(null);
+  const [tripsPlanned, setTripsPlanned] = useState(0);
+  const [citiesExplored, setCitiesExplored] = useState(0);
 
   useEffect(() => {
     setToken(localStorage.getItem('authToken'));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('city_visits')
+      .select('city', { count: 'exact' })
+      .eq('user_id', user.id)
+      .then(({ data, count }) => {
+        setTripsPlanned(count ?? 0);
+        const distinct = new Set((data ?? []).map((r: { city: string }) => r.city)).size;
+        setCitiesExplored(distinct);
+      });
+  }, [user]);
 
   // Redirect to login if no auth
   useEffect(() => {
@@ -103,7 +119,7 @@ export default function Dashboard() {
               </div>
               <p className="font-sans text-xs text-muted uppercase tracking-wide">Trips Planned</p>
             </div>
-            <p className="font-display font-bold text-3xl text-primary">0</p>
+            <p className="font-display font-bold text-3xl text-primary">{tripsPlanned}</p>
           </div>
 
           <div className="bg-surface border border-border rounded-xl p-5">
@@ -123,7 +139,7 @@ export default function Dashboard() {
               </div>
               <p className="font-sans text-xs text-muted uppercase tracking-wide">Cities Explored</p>
             </div>
-            <p className="font-display font-bold text-3xl text-primary">0</p>
+            <p className="font-display font-bold text-3xl text-primary">{citiesExplored}</p>
           </div>
         </div>
 
