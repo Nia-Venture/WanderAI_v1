@@ -3,7 +3,7 @@ import { navigate } from '../lib/router';
 import { ArrowRight } from 'lucide-react';
 
 export default function Welcome() {
-  const firstName = new URLSearchParams(window.location.search).get('name') ?? 'Traveler';
+  const firstName = new URLSearchParams(window.location.search).get('name') ?? 'Traveller';
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-6 py-16 text-center">

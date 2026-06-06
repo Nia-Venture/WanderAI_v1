@@ -140,7 +140,7 @@ export default function City({ cityName }: CityProps) {
             {cityDisplay}
           </h1>
           <p className="font-sans text-sm text-white/70">
-            Your local insider briefing — AI-powered, human-verified
+            AI-generated briefing from verified local knowledge
           </p>
         </div>
       </div>

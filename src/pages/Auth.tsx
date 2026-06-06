@@ -371,7 +371,7 @@ function TravellerForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
           )}
         </button>
 
-        <p className="font-sans text-xs text-muted text-center">By joining, you agree to our terms of use.</p>
+        <p className="font-sans text-xs text-muted text-center">By joining, you agree to our Terms of Service.</p>
         <p className="font-sans text-sm text-center text-muted">
           Already have an account?{' '}
           <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">Sign in</button>
@@ -491,7 +491,7 @@ function LocalForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
       </div>
 
       <div>
-        <label className={lc}>Why should travellers trust your advice?</label>
+        <label className={lc}>What makes your local knowledge special?</label>
         <textarea
           value={form.bio}
           onChange={e => set('bio', e.target.value)}
@@ -607,7 +607,7 @@ export default function Auth() {
 
         <div className="relative">
           <div className="border-t border-white/15 pt-6">
-            <p className="font-sans text-xs text-white/40">© 2026 WanderAI · MVP v0.1</p>
+            <p className="font-sans text-xs text-white/40">© 2026 WanderAI</p>
           </div>
         </div>
       </div>

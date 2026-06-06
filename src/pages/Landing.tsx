@@ -8,7 +8,7 @@ const PAIN_POINTS = [
   {
     icon: <CreditCard size={22} className="text-accent" />,
     label: 'Local Payments',
-    desc: 'Know which apps, cards & cash rules apply',
+    desc: 'Know which apps, cards & cash norms apply',
   },
   {
     icon: <Shield size={22} className="text-accent-2" />,
@@ -92,7 +92,7 @@ export default function Landing() {
           </h1>
 
           <p className="font-sans text-lg text-white/80 max-w-xl mx-auto leading-relaxed mb-10 drop-shadow">
-            Get a local's instinct for any city — in 60 seconds. Stop travelling like a tourist. Start living like a local.
+            Get a local's instinct for any city — in 60 seconds. Stop travelling like a tourist.
           </p>
 
           <HeroSearch />
@@ -134,7 +134,7 @@ export default function Landing() {
       {/* How it works */}
       <section className="px-6 pb-24 max-w-3xl mx-auto text-center">
         <h2 className="font-display font-semibold text-primary text-3xl mb-3">
-          From landing page to local intel in 60 seconds
+          From arrival to local intel in 60 seconds
         </h2>
         <p className="font-sans text-muted mb-12">
           The knowledge every local carries, made accessible to you — before you even land.
@@ -195,7 +195,7 @@ export default function Landing() {
           {/* Free tier */}
           <div className="bg-surface border-2 border-accent rounded-2xl p-8 relative text-left">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-              <span className="bg-accent text-white font-sans font-semibold text-xs px-3 py-1 rounded-full shadow">Most popular</span>
+              <span className="bg-accent text-white font-sans font-semibold text-xs px-3 py-1 rounded-full shadow">Always free</span>
             </div>
             <p className="font-mono text-xs text-accent uppercase tracking-widest mb-2">Free</p>
             <div className="flex items-baseline gap-1 mb-1">
@@ -263,7 +263,7 @@ export default function Landing() {
             <p className="font-sans text-sm text-muted leading-relaxed max-w-xs">
               Travel Like a Native. Get a local's instinct for any city in 60 seconds.
             </p>
-            <p className="font-sans text-xs text-muted mt-4">© 2026 WanderAI · MVP v0.1</p>
+            <p className="font-sans text-xs text-muted mt-4">© 2026 WanderAI</p>
           </div>
 
           {/* Col 2: Product */}

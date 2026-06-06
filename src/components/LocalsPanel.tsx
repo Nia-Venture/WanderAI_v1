@@ -33,8 +33,8 @@ export default function LocalsPanel({ cityName, locals, onChat }: LocalsPanelPro
 
       <div className="bg-surface rounded-card border border-border p-4 text-center">
         <p className="font-sans text-xs text-muted leading-relaxed">
-          All locals are{' '}
-          <span className="font-semibold text-accent-2">Native Verified</span> through a
+          All guides are{' '}
+          <span className="font-semibold text-accent-2">Verified</span> through a
           3-step authenticity check before joining WanderAI.
         </p>
       </div>

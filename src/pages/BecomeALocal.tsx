@@ -24,7 +24,7 @@ export default function BecomeALocal() {
         <div className="text-center mb-14">
           <div className="inline-flex items-center gap-2 bg-surface border border-border rounded-full px-4 py-1.5 mb-6 shadow-card">
             <span className="w-2 h-2 rounded-full bg-accent-2" />
-            <span className="font-mono text-xs text-muted">126 locals across 38 cities are already helping travellers</span>
+            <span className="font-mono text-xs text-muted">Locals across 38+ cities are already helping travellers</span>
           </div>
           <h1
             className="font-display font-bold text-primary mb-4"

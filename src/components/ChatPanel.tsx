@@ -113,8 +113,7 @@ export default function ChatPanel({ city, local, onClose }: ChatPanelProps) {
       <div className="px-4 py-2.5 bg-primary/5 border-b border-border flex items-start gap-2 shrink-0">
         <Bot size={14} className="text-primary mt-0.5 shrink-0" />
         <p className="font-sans text-xs text-muted leading-relaxed">
-          No live local available right now — our AI is answering on {local.name}'s behalf,
-          based on verified local knowledge of {cityDisplay}.
+          {local.name}'s local knowledge, powered by AI — answers based on verified local expertise of {cityDisplay}.
         </p>
       </div>
 

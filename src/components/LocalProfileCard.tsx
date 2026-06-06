@@ -27,7 +27,7 @@ export default function LocalProfileCard({ local, onChat }: LocalProfileCardProp
             <span className="font-sans font-semibold text-primary">{local.name}</span>
             <span className="flex items-center gap-1 text-xs text-accent-2 font-mono">
               <CheckCircle2 size={12} />
-              Native Verified
+              Verified Local
             </span>
           </div>
           <p className="font-sans text-xs text-muted mt-0.5 leading-relaxed">{local.tagline}</p>

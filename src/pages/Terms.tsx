@@ -25,7 +25,7 @@ export default function Terms() {
               },
               {
                 title: '3. Local Guide Rules',
-                body: 'Local guides who apply to join WanderAI must provide accurate information about their residency and expertise. Guide personas are AI-augmented simulations based on real local knowledge profiles. WanderAI does not guarantee the accuracy of any advice provided through the chat feature and recommends independent verification for safety-critical decisions.',
+                body: 'Local guides who apply to join WanderAI must provide accurate information about their residency and expertise. When a live local is unavailable, AI generates responses informed by verified local knowledge profiles. WanderAI does not guarantee the accuracy of any advice provided through the chat feature and recommends independent verification for safety-critical decisions.',
               },
               {
                 title: '4. Disclaimers',

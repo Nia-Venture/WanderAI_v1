@@ -29,7 +29,7 @@ export default function LocalPending() {
           Application submitted!
         </h2>
         <p className="font-sans text-muted leading-relaxed mb-10">
-          Welcome to WanderAI. Your local guide application is now in review. Here's what happens next:
+          Welcome to WanderAI. Your local guide application is under review. Here's what happens next:
         </p>
 
         <div className="space-y-4 mb-10 text-left">

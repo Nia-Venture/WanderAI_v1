@@ -100,7 +100,7 @@ export default function Dashboard() {
             Welcome back, {profile?.name?.split(' ')[0] || 'Traveler'}
           </h1>
           <p className="font-sans text-sm text-muted">
-            Here's your travel dashboard overview.
+            Here's your travel overview.
           </p>
         </div>
 

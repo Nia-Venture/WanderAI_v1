@@ -168,7 +168,7 @@ export default function Settings() {
           {/* Danger Zone */}
           <section className="bg-surface border border-red-200 rounded-2xl p-6">
             <h2 className="font-display font-semibold text-red-600 text-lg mb-4">Danger Zone</h2>
-            <p className="font-sans text-sm text-muted mb-4">Sign out from all sessions on this device.</p>
+            <p className="font-sans text-sm text-muted mb-4">Sign out of your current session.</p>
             <button
               onClick={handleSignOut}
               className="inline-flex items-center gap-2 border border-red-300 text-red-600 hover:bg-red-50 font-sans font-semibold text-sm py-2.5 px-5 rounded-xl transition-all"
