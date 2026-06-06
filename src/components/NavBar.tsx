@@ -24,6 +24,16 @@ export default function NavBar({ transparent = false }: NavBarProps) {
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/flights')}
+            className={`font-sans text-sm font-medium transition-colors px-3 py-2 hidden sm:block ${
+              transparent
+                ? 'text-white/70 hover:text-white'
+                : 'text-muted hover:text-primary'
+            }`}
+          >
+            Flights & Hotels
+          </button>
           {!authLoading && user && profile ? (
             <UserMenu profile={profile} inverted={transparent} />
           ) : !authLoading ? (
