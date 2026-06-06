@@ -26,7 +26,6 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>;
   signUpTraveller: (name: string, email: string, password: string) => Promise<void>;
   signUpLocal: (data: LocalSignUpData) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -37,7 +36,6 @@ const AuthContext = createContext<AuthContextValue>({
   signIn: async () => {},
   signUpTraveller: async () => {},
   signUpLocal: async () => {},
-  signInWithGoogle: async () => {},
   signOut: async () => {},
 });
 
@@ -145,14 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (localError) throw localError;
   }
 
-  async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) throw error;
-  }
-
   async function signOut() {
     await supabase.auth.signOut();
     setUser(null);
@@ -161,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, authLoading, signIn, signUpTraveller, signUpLocal, signInWithGoogle, signOut }}
+      value={{ user, profile, authLoading, signIn, signUpTraveller, signUpLocal, signOut }}
     >
       {children}
     </AuthContext.Provider>
