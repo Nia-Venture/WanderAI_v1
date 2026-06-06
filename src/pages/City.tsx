@@ -9,7 +9,7 @@ import TravelSearch from '../components/TravelSearch';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { getCityLocals } from '../data/seededLocals';
 import { generateBriefing } from '../api/generateBriefing';
-import { trackCityVisit } from '../lib/auth';
+import { trackCityVisit, useAuth } from '../lib/auth';
 import type { CityBriefing } from '../types/briefing';
 import type { LocalProfile } from '../data/seededLocals';
 import { ArrowLeft, ArrowUp } from 'lucide-react';
@@ -36,6 +36,7 @@ interface CityProps {
 }
 
 export default function City({ cityName }: CityProps) {
+  const { user } = useAuth();
   const [briefing, setBriefing] = useState<CityBriefing | null>(null);
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,7 +65,7 @@ export default function City({ cityName }: CityProps) {
           setBriefing(data);
           setGeneratedAt(new Date());
           setLoading(false);
-          trackCityVisit(cityName);
+          if (user?.id) trackCityVisit(user.id, cityName);
         }
       })
       .catch((err) => {

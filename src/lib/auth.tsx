@@ -158,10 +158,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export async function trackCityVisit(cityName: string) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase.from('city_visits').insert({ user_id: user.id, city: cityName.toLowerCase() });
+export async function trackCityVisit(userId: string, city: string): Promise<void> {
+  await supabase.from('city_visits').insert({ user_id: userId, city: city.toLowerCase() });
 }
 
 export function useAuth() {

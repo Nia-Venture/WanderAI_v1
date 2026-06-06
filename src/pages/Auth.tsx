@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth, type LocalSignUpData } from '../lib/auth';
-import { supabase } from '../lib/supabase';
 import { LogoMark } from '../components/Logo';
 import { navigate } from '../lib/router';
 import { Eye, EyeOff, ArrowRight, CheckCircle2, Globe, Clock, Star } from 'lucide-react';
 import { SUPPORTED_CITIES } from '../data/seededLocals';
+import { sendPin } from '../api/sendPin';
+import { verifyPin } from '../api/verifyPin';
 
-type Mode = 'signin' | 'traveller' | 'local' | 'forgot' | 'reset';
+type Mode = 'signin' | 'traveller' | 'local' | 'forgot';
 
 const HERO_IMAGE =
   'https://images.pexels.com/photos/11811982/pexels-photo-11811982.jpeg?auto=compress&cs=tinysrgb&w=1200';
@@ -156,116 +157,155 @@ function SignInForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   );
 }
 
-// ─── Forgot Password Form ──────────────────────────────────────────────────
+// ─── Forgot Password Form (PIN-based) ─────────────────────────────────────
 function ForgotPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [pin, setPin] = useState(['', '', '', '', '', '']);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const pinString = pin.join('');
+
+  async function handleSendPin(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) { setError('Please enter your email.'); return; }
     setLoading(true);
     setError('');
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin + '/auth?mode=reset',
-    });
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    setSent(true);
+    try {
+      await sendPin(email.trim());
+      setSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send PIN.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (sent) {
-    return (
-      <div className="text-center py-6 space-y-4">
-        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-          <CheckCircle2 size={28} className="text-success" />
-        </div>
-        <h3 className="font-display font-bold text-primary text-lg">Check your email</h3>
-        <p className="font-sans text-sm text-muted">We sent a password reset link to <span className="font-medium text-text-main">{email}</span>.</p>
-        <button type="button" onClick={() => onSwitch('signin')} className="font-sans text-sm text-accent hover:underline font-medium">
-          Back to sign in
-        </button>
-      </div>
-    );
+  function handlePinChange(i: number, val: string) {
+    const digit = val.replace(/\D/g, '').slice(-1);
+    const next = [...pin];
+    next[i] = digit;
+    setPin(next);
+    if (digit && i < 5) pinRefs.current[i + 1]?.focus();
   }
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="font-sans text-sm text-muted">Enter your account email and we'll send you a reset link.</p>
-      <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
-      {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
-      >
-        {loading ? (
-          <span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
-        ) : (
-          <><ArrowRight size={16} /> Send Reset Link</>
-        )}
-      </button>
-      <p className="font-sans text-sm text-center text-muted">
-        <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">Back to sign in</button>
-      </p>
-    </form>
-  );
-}
+  function handlePinKeyDown(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !pin[i] && i > 0) {
+      pinRefs.current[i - 1]?.focus();
+    }
+  }
 
-// ─── Reset Password Form ───────────────────────────────────────────────────
-function ResetPasswordForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSubmit(e: React.FormEvent) {
+  function handlePinPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    const next = [...pin];
+    for (let i = 0; i < 6; i++) next[i] = digits[i] ?? '';
+    setPin(next);
+    const lastIdx = Math.min(digits.length, 5);
+    pinRefs.current[lastIdx]?.focus();
+  }
+
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (pinString.length !== 6) { setError('Please enter the 6-digit PIN.'); return; }
+    if (newPassword.length < 8) { setError('Password must be at least 8 characters.'); return; }
+    if (newPassword !== confirmPassword) { setError('Passwords do not match.'); return; }
     setLoading(true);
     setError('');
-    const { error: err } = await supabase.auth.updateUser({ password });
-    setLoading(false);
-    if (err) { setError(err.message); return; }
-    setDone(true);
+    try {
+      await verifyPin(email.trim(), pinString, newPassword);
+      setSuccessMsg('Password reset! Please sign in with your new password.');
+      onSwitch('signin');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password.');
+    } finally {
+      setLoading(false);
+    }
   }
 
-  if (done) {
+  if (!sent) {
     return (
-      <div className="text-center py-6 space-y-4">
-        <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mx-auto">
-          <CheckCircle2 size={28} className="text-success" />
-        </div>
-        <h3 className="font-display font-bold text-primary text-lg">Password updated!</h3>
-        <p className="font-sans text-sm text-muted">You can now sign in with your new password.</p>
-        <button type="button" onClick={() => onSwitch('signin')} className="font-sans text-sm text-accent hover:underline font-medium">
-          Sign in
+      <form onSubmit={handleSendPin} className="space-y-4">
+        <FieldInput value={email} onChange={setEmail} placeholder="Email address" type="email" />
+        {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
+        >
+          {loading ? (
+            <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}</span>
+          ) : (
+            <><ArrowRight size={16} /> Send PIN</>
+          )}
         </button>
-      </div>
+        <p className="font-sans text-sm text-center text-muted">
+          <button type="button" onClick={() => onSwitch('signin')} className="text-accent hover:underline font-medium">← Back to sign in</button>
+        </p>
+      </form>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <p className="font-sans text-sm text-muted">Choose a new password for your account.</p>
-      <PasswordInput value={password} onChange={setPassword} placeholder="New password" />
-      <PasswordInput value={confirm} onChange={setConfirm} placeholder="Confirm new password" />
+    <form onSubmit={handleReset} className="space-y-4">
+      <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+        <p className="font-sans text-sm text-green-700">PIN sent! Check your inbox for a 6-digit code.</p>
+      </div>
+
+      {successMsg && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+          <p className="font-sans text-sm text-green-700">{successMsg}</p>
+        </div>
+      )}
+
+      {/* 6-box PIN input */}
+      <div>
+        <p className="font-mono text-xs text-muted uppercase tracking-wide mb-2">Enter your PIN</p>
+        <div className="flex gap-2">
+          {pin.map((digit, i) => (
+            <input
+              key={i}
+              ref={el => { pinRefs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={1}
+              value={digit}
+              onChange={e => handlePinChange(i, e.target.value)}
+              onKeyDown={e => handlePinKeyDown(i, e)}
+              onPaste={i === 0 ? handlePinPaste : undefined}
+              className="w-11 h-11 text-center font-mono text-lg border border-border rounded-xl bg-bg text-text-main outline-none focus:border-accent transition-colors"
+            />
+          ))}
+        </div>
+      </div>
+
+      <PasswordInput value={newPassword} onChange={setNewPassword} placeholder="New password" />
+      <PasswordInput value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm new password" />
+
       {error && <p className="font-sans text-sm text-red-500 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+
       <button
         type="submit"
         disabled={loading}
         className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark disabled:opacity-50 text-white font-sans font-semibold text-sm py-3.5 rounded-xl transition-all active:scale-[0.98]"
       >
         {loading ? (
-          <span className="flex gap-1">{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</span>
+          <span className="flex gap-1">{[0,1,2].map(i => <span key={i} className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}</span>
         ) : (
-          <><CheckCircle2 size={16} /> Update Password</>
+          <><CheckCircle2 size={16} /> Reset Password</>
         )}
       </button>
+
+      <p className="font-sans text-xs text-center text-muted">
+        Didn't get a PIN?{' '}
+        <button type="button" onClick={() => setSent(false)} className="text-accent hover:underline">Resend PIN</button>
+      </p>
     </form>
   );
 }
@@ -298,7 +338,7 @@ function TravellerForm({ onSwitch }: { onSwitch: (m: Mode) => void }) {
     setGlobalError('');
     try {
       await signUpTraveller(name.trim(), email.trim(), password);
-      navigate('/welcome');
+      navigate('/welcome?name=' + encodeURIComponent(name.trim().split(' ')[0]));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed.';
       setGlobalError(msg.includes('already') ? 'Email already registered. Try signing in.' : msg);
@@ -494,14 +534,13 @@ export default function Auth() {
     if (p === 'local') return 'local';
     if (p === 'signup') return 'traveller';
     if (p === 'forgot') return 'forgot';
-    if (p === 'reset') return 'reset';
     return 'signin';
   })();
   const [mode, setMode] = useState<Mode>(initialMode);
 
   useEffect(() => {
-    if (user && mode !== 'reset') navigate('/');
-  }, [user, mode]);
+    if (user) navigate('/');
+  }, [user]);
 
   const TABS: { key: Mode; label: string }[] = [
     { key: 'signin', label: 'Sign In' },
@@ -514,15 +553,13 @@ export default function Auth() {
     traveller: 'Start exploring like a local',
     local: 'Share your city with the world',
     forgot: 'Reset your password',
-    reset: 'Choose a new password',
   };
 
   const formSub: Record<Mode, string> = {
     signin: 'Sign in to your WanderAI account.',
     traveller: 'Create your free traveller account.',
     local: 'Apply to become a verified WanderAI local guide.',
-    forgot: 'We\'ll email you a secure reset link.',
-    reset: 'Enter a new password for your account.',
+    forgot: "Enter your email and we'll send a 6-digit PIN.",
   };
 
   return (
@@ -595,8 +632,8 @@ export default function Auth() {
 
         <div className="flex-1 flex items-start lg:items-center justify-center px-6 py-10">
           <div className="w-full max-w-lg">
-            {/* Tabs — hidden for forgot/reset */}
-            {mode !== 'forgot' && mode !== 'reset' && (
+            {/* Tabs — hidden for forgot */}
+            {mode !== 'forgot' && (
               <div className="flex bg-surface border border-border rounded-2xl p-1 mb-8 gap-1">
                 {TABS.map((t) => (
                   <button
@@ -626,7 +663,6 @@ export default function Auth() {
               {mode === 'traveller' && <TravellerForm onSwitch={setMode} />}
               {mode === 'local' && <LocalForm onSwitch={setMode} />}
               {mode === 'forgot' && <ForgotPasswordForm onSwitch={setMode} />}
-              {mode === 'reset' && <ResetPasswordForm onSwitch={setMode} />}
             </div>
           </div>
         </div>
