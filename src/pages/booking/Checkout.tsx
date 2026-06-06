@@ -17,10 +17,12 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const inputCls = (err?: string) =>
   `w-full bg-bg border rounded-xl px-4 py-3 font-sans text-sm text-text-main outline-none transition-colors ${err ? 'border-red-400' : 'border-border focus:border-accent'}`;
 
-function HotelSummary({ hotel, nights, rooms }: { hotel: MockHotel; nights: number; rooms: number }) {
+function HotelSummary({ hotel, nights, rooms, promoApplied }: { hotel: MockHotel; nights: number; rooms: number; promoApplied: boolean }) {
   const subtotal = hotel.pricePerNight * nights * rooms;
-  const taxes = Math.round(subtotal * 0.10);
-  const total = subtotal + taxes;
+  const discount = promoApplied ? Math.round(subtotal * 0.10) : 0;
+  const discountedSubtotal = subtotal - discount;
+  const taxes = Math.round(discountedSubtotal * 0.10);
+  const total = discountedSubtotal + taxes;
   return (
     <div className="space-y-2">
       <div className="mb-3">
@@ -31,6 +33,12 @@ function HotelSummary({ hotel, nights, rooms }: { hotel: MockHotel; nights: numb
         <span className="text-muted">${hotel.pricePerNight}/night × {nights}N{rooms > 1 ? ` × ${rooms}` : ''}</span>
         <span>${subtotal.toLocaleString()}</span>
       </div>
+      {promoApplied && (
+        <div className="flex justify-between font-sans text-sm text-accent-2">
+          <span>WANDER10 (−10%)</span>
+          <span>−${discount.toLocaleString()}</span>
+        </div>
+      )}
       <div className="flex justify-between font-sans text-sm">
         <span className="text-muted">Taxes (10%)</span>
         <span>${taxes.toLocaleString()}</span>
@@ -246,7 +254,7 @@ export default function Checkout() {
             <div className="lg:col-span-1">
               <div className="bg-surface border border-border rounded-card p-5 shadow-card sticky top-24 space-y-4">
                 <h3 className="font-display font-semibold text-primary text-sm">Order Summary</h3>
-                {hotel && <HotelSummary hotel={hotel} nights={nights} rooms={rooms} />}
+                {hotel && <HotelSummary hotel={hotel} nights={nights} rooms={rooms} promoApplied={promoApplied} />}
                 {promoApplied && (
                   <div className="flex items-center gap-2 bg-accent-2/10 border border-accent-2/30 rounded-lg px-3 py-2">
                     <Tag size={12} className="text-accent-2" />

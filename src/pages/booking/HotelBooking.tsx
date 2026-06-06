@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import NavBar from '../../components/NavBar';
 import { navigate } from '../../lib/router';
-import { type MockHotel } from '../../data/mockHotels';
+import { generateHotels, type MockHotel } from '../../data/mockHotels';
 import { ArrowLeft, ArrowRight, MapPin, Star, Wifi, Waves, Dumbbell, Coffee, Calendar } from 'lucide-react';
 
 const AMENITY_ICONS: Record<string, React.ReactNode> = {
@@ -44,7 +44,15 @@ export default function HotelBooking({ hotelId }: { hotelId: string }) {
     const raw = sessionStorage.getItem('wander_selected_hotel');
     if (raw) {
       const h: MockHotel = JSON.parse(raw);
-      if (h.id === hotelId) setHotel(h);
+      if (h.id === hotelId) {
+        setHotel(h);
+      } else {
+        const cities = ['Dubai', 'London', 'Tokyo', 'Paris', 'Bangkok', 'New York', 'Singapore'];
+        for (const city of cities) {
+          const found = generateHotels(city).find(gh => gh.id === hotelId);
+          if (found) { setHotel(found); break; }
+        }
+      }
     }
     const searchRaw = sessionStorage.getItem('wander_hotel_search');
     if (searchRaw) {
