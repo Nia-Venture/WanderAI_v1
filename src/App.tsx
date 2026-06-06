@@ -8,10 +8,13 @@ import LocalPending from './pages/LocalPending';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Welcome from './pages/Welcome';
+import Settings from './pages/Settings';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
 
 function Routes() {
-  const { match, pathname } = useRouter();
+  const { match } = useRouter();
 
   const cityMatch = match('/city/:cityName');
   if (cityMatch) return <City cityName={cityMatch.params.cityName} />;
@@ -22,6 +25,9 @@ function Routes() {
   if (match('/login')) return <Login />;
   if (match('/dashboard')) return <Dashboard />;
   if (match('/welcome')) return <Welcome />;
+  if (match('/settings')) return <Settings />;
+  if (match('/privacy')) return <Privacy />;
+  if (match('/terms')) return <Terms />;
   if (match('/')) return <Landing />;
 
   return <NotFound />;

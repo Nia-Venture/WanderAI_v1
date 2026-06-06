@@ -6,12 +6,30 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import LocalsPanel from '../components/LocalsPanel';
 import ChatPanel from '../components/ChatPanel';
 import TravelSearch from '../components/TravelSearch';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { getCityLocals } from '../data/seededLocals';
 import { generateBriefing } from '../api/generateBriefing';
 import { trackCityVisit } from '../lib/auth';
 import type { CityBriefing } from '../types/briefing';
 import type { LocalProfile } from '../data/seededLocals';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowUp } from 'lucide-react';
+
+const CITY_PHOTO_IDS: Record<string, string> = {
+  dubai: '1534560/pexels-photo-1534560',
+  tokyo: '2506923/pexels-photo-2506923',
+  london: '460672/pexels-photo-460672',
+  bangkok: '1031659/pexels-photo-1031659',
+  paris: '739407/pexels-photo-739407',
+  nairobi: '3992953/pexels-photo-3992953',
+};
+
+const FALLBACK_PHOTO = '11811982/pexels-photo-11811982';
+
+function getCityHero(city: string): string {
+  const key = city.toLowerCase().trim();
+  const path = CITY_PHOTO_IDS[key] ?? FALLBACK_PHOTO;
+  return `https://images.pexels.com/photos/${path}.jpeg?auto=compress&cs=tinysrgb&w=1200`;
+}
 
 interface CityProps {
   cityName: string;
@@ -19,10 +37,12 @@ interface CityProps {
 
 export default function City({ cityName }: CityProps) {
   const [briefing, setBriefing] = useState<CityBriefing | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeLocal, setActiveLocal] = useState<LocalProfile | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const briefingRef = useRef<AbortController | null>(null);
 
   const locals = getCityLocals(cityName);
@@ -36,11 +56,13 @@ export default function City({ cityName }: CityProps) {
     setLoading(true);
     setError(null);
     setBriefing(null);
+    setGeneratedAt(null);
 
     generateBriefing(cityName)
       .then((data) => {
         if (!ctrl.signal.aborted) {
           setBriefing(data);
+          setGeneratedAt(new Date());
           setLoading(false);
           trackCityVisit(cityName);
         }
@@ -55,6 +77,14 @@ export default function City({ cityName }: CityProps) {
     return () => ctrl.abort();
   }, [cityName]);
 
+  useEffect(() => {
+    function onScroll() {
+      setShowScrollTop(window.scrollY > 400);
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   function openChat(local: LocalProfile) {
     setActiveLocal(local);
     setChatOpen(true);
@@ -65,24 +95,31 @@ export default function City({ cityName }: CityProps) {
     setTimeout(() => setActiveLocal(null), 300);
   }
 
+  const heroImage = getCityHero(cityName);
+
   return (
     <div className="min-h-screen bg-bg">
       <NavBar />
 
-      {/* City header */}
-      <div className="pt-16 px-6 bg-primary text-surface">
-        <div className="max-w-7xl mx-auto py-8 flex flex-col gap-3">
+      {/* City hero header */}
+      <div className="pt-16 relative overflow-hidden" style={{ minHeight: '220px' }}>
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${heroImage})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-black/40" />
+        <div className="relative max-w-7xl mx-auto px-6 py-10 flex flex-col gap-3">
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 font-sans text-sm text-surface/60 hover:text-surface transition-colors w-fit"
+            className="flex items-center gap-2 font-sans text-sm text-white/70 hover:text-white transition-colors w-fit"
           >
             <ArrowLeft size={15} />
             Back to search
           </button>
-          <h1 className="font-display font-semibold text-3xl md:text-4xl">
+          <h1 className="font-display font-semibold text-3xl md:text-4xl text-white">
             {cityDisplay}
           </h1>
-          <p className="font-sans text-sm text-surface/60">
+          <p className="font-sans text-sm text-white/70">
             Your local insider briefing — AI-powered, human-verified
           </p>
         </div>
@@ -93,19 +130,21 @@ export default function City({ cityName }: CityProps) {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Left: Briefing */}
           <div className="flex-1 min-w-0">
-            {loading && <LoadingSkeleton />}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-card p-6 text-center">
-                <p className="font-sans text-sm text-red-600 mb-3">{error}</p>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="font-sans text-sm text-accent hover:underline"
-                >
-                  Try again
-                </button>
-              </div>
-            )}
-            {briefing && <BriefingPanel briefing={briefing} cityName={cityName} />}
+            <ErrorBoundary>
+              {loading && <LoadingSkeleton />}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-card p-6 text-center">
+                  <p className="font-sans text-sm text-red-600 mb-3">{error}</p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="font-sans text-sm text-accent hover:underline"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+              {briefing && <BriefingPanel briefing={briefing} cityName={cityName} generatedAt={generatedAt ?? undefined} />}
+            </ErrorBoundary>
           </div>
 
           {/* Right: Locals sidebar — desktop only */}
@@ -174,6 +213,17 @@ export default function City({ cityName }: CityProps) {
             <ChatPanel city={cityName} local={activeLocal} onClose={closeChat} />
           </div>
         </>
+      )}
+
+      {/* Scroll-to-top FAB */}
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-30 bg-primary text-white rounded-full p-3 shadow-card-hover hover:bg-primary-light transition-all active:scale-90"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp size={20} />
+        </button>
       )}
     </div>
   );

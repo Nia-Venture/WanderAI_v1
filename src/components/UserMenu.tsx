@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth, type Profile } from '../lib/auth';
 import { navigate } from '../lib/router';
-import { ChevronDown, LogOut, MapPin, User } from 'lucide-react';
+import { ChevronDown, LogOut, MapPin, User, LayoutDashboard, Settings } from 'lucide-react';
 
 const AVATAR_PALETTE = ['#2AB8A8', '#1A3A4A', '#E8622A', '#C44E1E', '#178A7E', '#2A5A74'];
 
@@ -116,6 +116,22 @@ export default function UserMenu({ profile, inverted = false }: UserMenuProps) {
               </div>
             </div>
           )}
+
+          <button
+            onClick={() => { navigate('/dashboard'); setOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-3 font-sans text-sm text-text-main hover:bg-bg transition-colors"
+          >
+            <LayoutDashboard size={15} className="text-muted" />
+            My Dashboard
+          </button>
+
+          <button
+            onClick={() => { navigate('/settings'); setOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-3 font-sans text-sm text-text-main hover:bg-bg transition-colors"
+          >
+            <Settings size={15} className="text-muted" />
+            Account Settings
+          </button>
 
           <button
             onClick={handleSignOut}
