@@ -94,13 +94,30 @@ export default function HotelBooking({ hotelId }: { hotelId: string }) {
           <div className="lg:col-span-3 space-y-4">
             {/* Hero image + header */}
             <div className="bg-surface border border-border rounded-card overflow-hidden shadow-card">
-              <div className="w-full h-48" style={{ backgroundColor: hotel.imageColor }} />
+              <div className="relative w-full h-52 overflow-hidden">
+                <img
+                  src={hotel.imageUrl}
+                  alt={hotel.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    (e.target as HTMLImageElement).parentElement!.style.backgroundColor = hotel.brandColor + '33';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div
+                  className="absolute top-3 left-3 px-2.5 py-1 rounded text-white font-sans font-bold text-xs tracking-wide"
+                  style={{ backgroundColor: hotel.brandColor }}
+                >
+                  {hotel.brand}
+                </div>
+                <div className="absolute bottom-3 left-3">
+                  <Stars n={hotel.starRating} />
+                </div>
+              </div>
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Stars n={hotel.starRating} />
-                    </div>
                     <h2 className="font-display font-bold text-primary text-xl">{hotel.name}</h2>
                     <div className="flex items-center gap-1 mt-1">
                       <MapPin size={12} className="text-muted" />
@@ -108,7 +125,7 @@ export default function HotelBooking({ hotelId }: { hotelId: string }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="bg-primary text-white rounded-lg px-2.5 py-1.5 text-center">
+                    <div className="text-white rounded-lg px-2.5 py-1.5 text-center" style={{ backgroundColor: hotel.brandColor }}>
                       <p className="font-mono font-bold text-base leading-none">{hotel.reviewScore}</p>
                     </div>
                     <div>

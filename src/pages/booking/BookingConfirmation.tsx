@@ -81,7 +81,12 @@ export default function BookingConfirmation() {
               <div className="bg-surface border border-border rounded-card p-5 shadow-card text-left space-y-3">
                 <h3 className="font-display font-semibold text-primary text-sm">Booking Summary</h3>
                 <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-lg shrink-0" style={{ backgroundColor: hotel.imageColor }} />
+                  <div
+                    className="w-9 h-9 rounded-lg shrink-0 overflow-hidden"
+                    style={{ backgroundColor: hotel.brandColor + '33' }}
+                  >
+                    <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  </div>
                   <div>
                     <p className="font-sans text-sm font-semibold text-primary">{hotel.name}</p>
                     <p className="font-mono text-xs text-muted">
