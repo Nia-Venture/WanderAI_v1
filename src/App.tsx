@@ -12,11 +12,8 @@ import Settings from './pages/Settings';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import NotFound from './pages/NotFound';
-import FlightSearch from './pages/booking/FlightSearch';
 import HotelSearch from './pages/booking/HotelSearch';
-import FlightResults from './pages/booking/FlightResults';
 import HotelResults from './pages/booking/HotelResults';
-import FlightBooking from './pages/booking/FlightBooking';
 import HotelBooking from './pages/booking/HotelBooking';
 import Checkout from './pages/booking/Checkout';
 import BookingConfirmation from './pages/booking/BookingConfirmation';
@@ -27,15 +24,10 @@ function Routes() {
   const cityMatch = match('/city/:cityName');
   if (cityMatch) return <City cityName={cityMatch.params.cityName} />;
 
-  const flightBookingMatch = match('/booking/flight/:id');
-  if (flightBookingMatch) return <FlightBooking flightId={decodeURIComponent(flightBookingMatch.params.id)} />;
-
   const hotelBookingMatch = match('/booking/hotel/:id');
   if (hotelBookingMatch) return <HotelBooking hotelId={decodeURIComponent(hotelBookingMatch.params.id)} />;
 
-  if (match('/flights/results')) return <FlightResults />;
   if (match('/hotels/results')) return <HotelResults />;
-  if (match('/flights')) return <FlightSearch />;
   if (match('/hotels')) return <HotelSearch />;
   if (match('/booking/checkout')) return <Checkout />;
   if (match('/booking/confirmation')) return <BookingConfirmation />;

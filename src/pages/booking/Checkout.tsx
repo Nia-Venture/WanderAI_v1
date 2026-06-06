@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import NavBar from '../../components/NavBar';
 import { navigate } from '../../lib/router';
-import { type MockFlight, formatDuration } from '../../data/mockFlights';
 import { type MockHotel } from '../../data/mockHotels';
 import { AlertTriangle, Tag, ChevronRight, Loader2 } from 'lucide-react';
 
@@ -18,29 +17,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const inputCls = (err?: string) =>
   `w-full bg-bg border rounded-xl px-4 py-3 font-sans text-sm text-text-main outline-none transition-colors ${err ? 'border-red-400' : 'border-border focus:border-accent'}`;
 
-function FlightSummary({ flight, passengers }: { flight: MockFlight; passengers: number }) {
-  const taxes = Math.round(flight.price * 0.18);
-  const total = (flight.price + taxes) * passengers;
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-mono font-bold text-xs"
-          style={{ backgroundColor: flight.airlineColor }}>
-          {flight.airlineCode}
-        </div>
-        <div>
-          <p className="font-sans text-sm font-semibold text-primary">{flight.departureAirport.iata} → {flight.arrivalAirport.iata}</p>
-          <p className="font-mono text-xs text-muted">{flight.flightNumber} · {flight.cabin} · {formatDuration(flight.durationMinutes)}</p>
-        </div>
-      </div>
-      <div className="flex justify-between font-sans text-sm"><span className="text-muted">Base fare × {passengers}</span><span>${(flight.price * passengers).toLocaleString()}</span></div>
-      <div className="flex justify-between font-sans text-sm"><span className="text-muted">Taxes & fees</span><span>${(taxes * passengers).toLocaleString()}</span></div>
-      <div className="h-px bg-border" />
-      <div className="flex justify-between"><span className="font-display font-semibold text-primary text-sm">Total</span><span className="font-display font-bold text-primary text-lg">${total.toLocaleString()}</span></div>
-    </div>
-  );
-}
-
 function HotelSummary({ hotel, nights, rooms }: { hotel: MockHotel; nights: number; rooms: number }) {
   const subtotal = hotel.pricePerNight * nights * rooms;
   const taxes = Math.round(subtotal * 0.10);
@@ -51,10 +27,19 @@ function HotelSummary({ hotel, nights, rooms }: { hotel: MockHotel; nights: numb
         <p className="font-sans text-sm font-semibold text-primary">{hotel.name}</p>
         <p className="font-sans text-xs text-muted">{hotel.roomType} · {nights} night{nights !== 1 ? 's' : ''}{rooms > 1 ? ` · ${rooms} rooms` : ''}</p>
       </div>
-      <div className="flex justify-between font-sans text-sm"><span className="text-muted">${hotel.pricePerNight}/night × {nights}N{rooms > 1 ? ` × ${rooms}` : ''}</span><span>${subtotal.toLocaleString()}</span></div>
-      <div className="flex justify-between font-sans text-sm"><span className="text-muted">Taxes (10%)</span><span>${taxes.toLocaleString()}</span></div>
+      <div className="flex justify-between font-sans text-sm">
+        <span className="text-muted">${hotel.pricePerNight}/night × {nights}N{rooms > 1 ? ` × ${rooms}` : ''}</span>
+        <span>${subtotal.toLocaleString()}</span>
+      </div>
+      <div className="flex justify-between font-sans text-sm">
+        <span className="text-muted">Taxes (10%)</span>
+        <span>${taxes.toLocaleString()}</span>
+      </div>
       <div className="h-px bg-border" />
-      <div className="flex justify-between"><span className="font-display font-semibold text-primary text-sm">Total</span><span className="font-display font-bold text-primary text-lg">${total.toLocaleString()}</span></div>
+      <div className="flex justify-between">
+        <span className="font-display font-semibold text-primary text-sm">Total</span>
+        <span className="font-display font-bold text-primary text-lg">${total.toLocaleString()}</span>
+      </div>
     </div>
   );
 }
@@ -76,14 +61,9 @@ interface FormState {
 }
 
 export default function Checkout() {
-  const params = new URLSearchParams(window.location.search);
-  const type = params.get('type') as 'flight' | 'hotel' | null;
-
-  const [flight, setFlight] = useState<MockFlight | null>(null);
   const [hotel, setHotel] = useState<MockHotel | null>(null);
   const [nights, setNights] = useState(1);
   const [rooms, setRooms] = useState(1);
-  const [passengers, setPassengers] = useState(1);
   const [promoApplied, setPromoApplied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<FormState>>({});
@@ -96,27 +76,17 @@ export default function Checkout() {
   });
 
   useEffect(() => {
-    if (type === 'flight') {
-      const raw = sessionStorage.getItem('wander_selected_flight');
-      if (raw) setFlight(JSON.parse(raw));
-      const sRaw = sessionStorage.getItem('wander_flight_search');
-      if (sRaw) {
-        const p = JSON.parse(sRaw);
-        setPassengers((p.passengers?.adults ?? 1) + (p.passengers?.children ?? 0) + (p.passengers?.infants ?? 0));
-      }
-    } else if (type === 'hotel') {
-      const raw = sessionStorage.getItem('wander_selected_hotel');
-      if (raw) setHotel(JSON.parse(raw));
-      const sRaw = sessionStorage.getItem('wander_hotel_search');
-      if (sRaw) {
-        const p = JSON.parse(sRaw);
-        setRooms(p.rooms ?? 1);
-        if (p.checkIn && p.checkOut) {
-          setNights(Math.max(1, Math.round((new Date(p.checkOut).getTime() - new Date(p.checkIn).getTime()) / 86400000)));
-        }
+    const raw = sessionStorage.getItem('wander_selected_hotel');
+    if (raw) setHotel(JSON.parse(raw));
+    const sRaw = sessionStorage.getItem('wander_hotel_search');
+    if (sRaw) {
+      const p = JSON.parse(sRaw);
+      setRooms(p.rooms ?? 1);
+      if (p.checkIn && p.checkOut) {
+        setNights(Math.max(1, Math.round((new Date(p.checkOut).getTime() - new Date(p.checkIn).getTime()) / 86400000)));
       }
     }
-  }, [type]);
+  }, []);
 
   function set(field: keyof FormState, value: string) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -145,9 +115,7 @@ export default function Checkout() {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    setTimeout(() => {
-      navigate('/booking/confirmation');
-    }, 1500);
+    setTimeout(() => navigate('/booking/confirmation'), 1500);
   }
 
   function formatCard(val: string) {
@@ -167,7 +135,6 @@ export default function Checkout() {
           <p className="font-sans text-sm text-muted mt-1">Complete your booking details below.</p>
         </div>
 
-        {/* Test mode banner */}
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
           <AlertTriangle size={16} className="text-amber-600 shrink-0" />
           <p className="font-sans text-sm text-amber-700">
@@ -177,10 +144,7 @@ export default function Checkout() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left column: forms */}
             <div className="lg:col-span-2 space-y-5">
-
-              {/* Contact Details */}
               <section className="bg-surface border border-border rounded-card p-5 shadow-card">
                 <h2 className="font-display font-semibold text-primary text-base mb-4">Contact Details</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -203,9 +167,8 @@ export default function Checkout() {
                 </div>
               </section>
 
-              {/* Traveller Details */}
               <section className="bg-surface border border-border rounded-card p-5 shadow-card">
-                <h2 className="font-display font-semibold text-primary text-base mb-4">Traveller Details</h2>
+                <h2 className="font-display font-semibold text-primary text-base mb-4">Guest Details</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <Field label="Date of Birth">
                     <input type="date" className={inputCls()} value={form.dob}
@@ -222,17 +185,15 @@ export default function Checkout() {
                 </div>
               </section>
 
-              {/* Special Requests */}
               <section className="bg-surface border border-border rounded-card p-5 shadow-card">
                 <h2 className="font-display font-semibold text-primary text-base mb-4">Special Requests</h2>
                 <Field label="Any requests? (optional)">
                   <textarea className={`${inputCls()} resize-none`} rows={3} value={form.requests}
                     onChange={e => set('requests', e.target.value)}
-                    placeholder="e.g. wheelchair access, dietary requirements, early check-in..." />
+                    placeholder="e.g. early check-in, high floor, dietary requirements..." />
                 </Field>
               </section>
 
-              {/* Payment */}
               <section className="bg-surface border border-border rounded-card p-5 shadow-card">
                 <h2 className="font-display font-semibold text-primary text-base mb-4">Payment Details</h2>
                 <div className="space-y-4">
@@ -260,7 +221,6 @@ export default function Checkout() {
                 </div>
               </section>
 
-              {/* Promo code */}
               <section className="bg-surface border border-border rounded-card p-5 shadow-card">
                 <h2 className="font-display font-semibold text-primary text-base mb-4">Promo Code</h2>
                 {promoApplied ? (
@@ -272,7 +232,7 @@ export default function Checkout() {
                   <div className="flex gap-2">
                     <input className="flex-1 bg-bg border border-border rounded-xl px-4 py-3 font-sans text-sm text-text-main outline-none focus:border-accent transition-colors"
                       value={form.promo} onChange={e => set('promo', e.target.value.toUpperCase())}
-                      placeholder="Enter promo code" />
+                      placeholder="Enter promo code (try WANDER10)" />
                     <button type="button" onClick={applyPromo}
                       className="px-4 py-3 bg-primary text-white font-sans text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors whitespace-nowrap">
                       Apply
@@ -282,25 +242,16 @@ export default function Checkout() {
               </section>
             </div>
 
-            {/* Right: Order summary */}
             <div className="lg:col-span-1">
               <div className="bg-surface border border-border rounded-card p-5 shadow-card sticky top-24 space-y-4">
                 <h3 className="font-display font-semibold text-primary text-sm">Order Summary</h3>
-
-                {type === 'flight' && flight && (
-                  <FlightSummary flight={flight} passengers={passengers} />
-                )}
-                {type === 'hotel' && hotel && (
-                  <HotelSummary hotel={hotel} nights={nights} rooms={rooms} />
-                )}
-
+                {hotel && <HotelSummary hotel={hotel} nights={nights} rooms={rooms} />}
                 {promoApplied && (
                   <div className="flex items-center gap-2 bg-accent-2/10 border border-accent-2/30 rounded-lg px-3 py-2">
                     <Tag size={12} className="text-accent-2" />
                     <p className="font-sans text-xs text-accent-2 font-semibold">WANDER10 — 10% off applied</p>
                   </div>
                 )}
-
                 <button type="submit" disabled={submitting}
                   className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-sans font-semibold py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed">
                   {submitting ? (
@@ -309,7 +260,6 @@ export default function Checkout() {
                     <>Confirm Booking <ChevronRight size={16} /></>
                   )}
                 </button>
-
                 <p className="font-sans text-xs text-muted text-center">
                   Secured checkout. No real charges will be made.
                 </p>

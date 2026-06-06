@@ -102,14 +102,14 @@ export default function NavBar({ transparent = false }: NavBarProps) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/flights')}
+            onClick={() => navigate('/hotels')}
             className={`font-sans text-sm font-medium transition-colors px-3 py-2 hidden sm:block ${
               transparent
                 ? 'text-white/70 hover:text-white'
                 : 'text-muted hover:text-primary'
             }`}
           >
-            Flights & Hotels
+            Hotels
           </button>
 
           {!authLoading && user && profile ? (

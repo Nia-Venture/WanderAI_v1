@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { SUPPORTED_CITIES } from '../data/seededLocals';
 import { navigate } from '../lib/router';
-import { Search, ArrowRight, Plane, Building2 } from 'lucide-react';
-import FlightSearchForm from './booking/FlightSearchForm';
+import { Search, ArrowRight, Building2 } from 'lucide-react';
 import HotelSearchForm from './booking/HotelSearchForm';
 
-type Tab = 'city' | 'flights' | 'hotels';
+type Tab = 'city' | 'hotels';
 
 export default function HeroSearch() {
   const [tab, setTab] = useState<Tab>('city');
@@ -50,7 +49,6 @@ export default function HeroSearch() {
 
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'city', label: 'City Guide', icon: <Search size={13} /> },
-    { id: 'flights', label: 'Flights', icon: <Plane size={13} /> },
     { id: 'hotels', label: 'Hotels', icon: <Building2 size={13} /> },
   ];
 
@@ -116,13 +114,6 @@ export default function HeroSearch() {
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Flight search */}
-      {tab === 'flights' && (
-        <div className="bg-surface rounded-2xl border border-border shadow-card p-5">
-          <FlightSearchForm />
         </div>
       )}
 

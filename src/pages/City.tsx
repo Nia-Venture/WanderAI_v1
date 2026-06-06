@@ -5,7 +5,8 @@ import BriefingPanel from '../components/BriefingPanel';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import LocalsPanel from '../components/LocalsPanel';
 import ChatPanel from '../components/ChatPanel';
-import TravelSearch from '../components/TravelSearch';
+import TransitSection from '../components/TransitSection';
+import CityHotelWidget from '../components/CityHotelWidget';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { getCityLocals } from '../data/seededLocals';
 import { generateBriefing } from '../api/generateBriefing';
@@ -216,9 +217,10 @@ export default function City({ cityName }: CityProps) {
           </div>
         </div>
 
-        {/* Travel Search — full width below briefing */}
-        <div className="mt-10">
-          <TravelSearch cityName={cityName} />
+        {/* Transit & Hotels — full width below briefing */}
+        <div className="mt-10 space-y-8">
+          <TransitSection cityName={cityName} />
+          <CityHotelWidget cityName={cityName} />
         </div>
       </div>
 
