@@ -49,18 +49,10 @@ export default function BookingConfirmation() {
   }, []);
 
   return (
-    <>
-      <style>{`
-        @keyframes dash-circle { from { stroke-dashoffset: 226; } to { stroke-dashoffset: 0; } }
-        @keyframes dash-check { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
-        @keyframes pop-in { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
-        .animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-      `}</style>
-
-      <div className="min-h-screen bg-bg">
-        <NavBar />
-        <div className="pt-20 pb-16 max-w-2xl mx-auto px-4 sm:px-6">
-          <div className="mt-12 text-center space-y-6">
+    <div className="min-h-screen bg-bg">
+      <NavBar />
+      <div className="pt-20 pb-16 max-w-2xl mx-auto px-4 sm:px-6">
+        <div className="mt-12 text-center space-y-6">
             <div className="flex justify-center animate-pop-in">
               <CheckmarkSVG />
             </div>
@@ -115,9 +107,8 @@ export default function BookingConfirmation() {
                 <Search size={15} /> Search Hotels Again
               </button>
             </div>
-          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

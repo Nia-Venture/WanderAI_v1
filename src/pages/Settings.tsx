@@ -125,7 +125,7 @@ export default function Settings() {
                   )}
                 </button>
                 {nameSaved && (
-                  <span className="flex items-center gap-1.5 font-sans text-sm text-success">
+                  <span className="flex items-center gap-1.5 font-sans text-sm text-accent-2">
                     <CheckCircle2 size={15} /> Saved!
                   </span>
                 )}
@@ -157,7 +157,7 @@ export default function Settings() {
                   )}
                 </button>
                 {pwSaved && (
-                  <span className="flex items-center gap-1.5 font-sans text-sm text-success">
+                  <span className="flex items-center gap-1.5 font-sans text-sm text-accent-2">
                     <CheckCircle2 size={15} /> Password updated!
                   </span>
                 )}

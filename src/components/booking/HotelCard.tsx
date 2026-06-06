@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type MockHotel } from '../../data/mockHotels';
 import { navigate } from '../../lib/router';
-import { Star, MapPin, ChevronRight, Wifi, Waves, Dumbbell, Coffee, Utensils, Dumbbell as Spa, Car, UtensilsCrossed } from 'lucide-react';
+import { Star, MapPin, ChevronRight, Wifi, Waves, Dumbbell, Coffee, Utensils, Car, UtensilsCrossed } from 'lucide-react';
 
 interface Props {
   hotel: MockHotel;
@@ -13,7 +13,7 @@ const AMENITY_ICONS: Record<string, React.ReactNode> = {
   'Gym':                <Dumbbell size={10} />,
   'Breakfast included': <Coffee size={10} />,
   'Restaurant':         <Utensils size={10} />,
-  'Spa':                <Spa size={10} />,
+  'Spa':                <Dumbbell size={10} />,
   'Parking':            <Car size={10} />,
   'Bar':                <UtensilsCrossed size={10} />,
 };

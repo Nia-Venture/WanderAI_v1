@@ -6,6 +6,11 @@ import HotelSearchForm from './booking/HotelSearchForm';
 
 type Tab = 'city' | 'hotels';
 
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'city', label: 'City Guide', icon: <Search size={13} /> },
+  { id: 'hotels', label: 'Hotels', icon: <Building2 size={13} /> },
+];
+
 export default function HeroSearch() {
   const [tab, setTab] = useState<Tab>('city');
   const [query, setQuery] = useState('');
@@ -46,11 +51,6 @@ export default function HeroSearch() {
   }
 
   const showDropdown = tab === 'city' && focused && suggestions.length > 0;
-
-  const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'city', label: 'City Guide', icon: <Search size={13} /> },
-    { id: 'hotels', label: 'Hotels', icon: <Building2 size={13} /> },
-  ];
 
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl mx-auto">

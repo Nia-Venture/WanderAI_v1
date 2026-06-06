@@ -128,8 +128,8 @@ export default function Dashboard() {
 
           <div className="bg-surface border border-border rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <MapPin size={20} className="text-success" />
+              <div className="w-10 h-10 rounded-lg bg-accent-2/10 flex items-center justify-center">
+                <MapPin size={20} className="text-accent-2" />
               </div>
               <p className="font-sans text-xs text-muted uppercase tracking-wide">Cities Explored</p>
             </div>
